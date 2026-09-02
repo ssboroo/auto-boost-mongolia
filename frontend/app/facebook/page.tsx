@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import styles from './page.module.css'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const API = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/api/backend' : 'http://localhost:4000')
 
 type Status = { configured: boolean; graphVersion: string; redirectUri: string; provider: string }
 
@@ -57,7 +57,7 @@ export default function FacebookConnectionPage() {
             <button className={styles.primary} onClick={connectFacebook} disabled={!status?.configured || loading}>
               Facebook Ads холбох
             </button>
-            {!status?.configured && <small>backend/.env дотор META_APP_ID болон META_APP_SECRET оруулна уу.</small>}
+            {!status?.configured && <small>Vercel Environment Variables хэсэгт META_APP_ID болон META_APP_SECRET оруулна уу.</small>}
           </section>
 
           <section className={styles.card}>
