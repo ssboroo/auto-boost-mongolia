@@ -1,431 +1,211 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  ArrowRight,
-  BarChart3,
-  Bell,
-  Bot,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleDollarSign,
-  Facebook,
-  Gauge,
-  LayoutDashboard,
-  Megaphone,
-  Menu,
-  MonitorSmartphone,
-  MoreHorizontal,
-  Plus,
-  Rocket,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  Users,
-  WandSparkles,
-  X,
+  BarChart3, Bot, Check, ChevronRight, CircleDollarSign, Facebook, ImagePlus,
+  LayoutDashboard, Megaphone, Settings, ShieldCheck, Sparkles, Target, Users,
+  WandSparkles, WalletCards, Zap,
 } from 'lucide-react'
+import styles from './page.module.css'
 import { apiFetch } from '../lib/api'
+import { supabase } from '../lib/supabase'
 
-type ApiStatus = {
-  configured: boolean
-  sessionConfigured: boolean
-  productionReady: boolean
-  graphVersion: string
+type Fx = { rate: number; source: string; rateDate: string; fetchedAt: string }
+type Quote = {
+  metaBudgetUsd: number
+  fx: Fx
+  adBudgetMnt: number
+  serviceFeePercent: number
+  serviceFeeMnt: number
+  totalDisplayMnt: number
 }
+type MetaStatus = { productionReady: boolean; configured: boolean }
+type MetaSession = { connected: boolean; profile?: { name?: string } }
 
-type SessionStatus = {
-  connected: boolean
-  profile?: { id?: string; name?: string; picture?: { data?: { url?: string } } }
-}
-
-const steps = [
-  { label: 'Кампайн', short: 'Зорилго' },
-  { label: 'Зарын багц', short: 'Audience' },
-  { label: 'Зар', short: 'Creative' },
-  { label: 'AI шалгалт', short: 'Quality' },
-  { label: 'Баталгаажуулах', short: 'Preview' },
-]
-
-const placements = ['Facebook Feed', 'Instagram Feed', 'Facebook Story', 'Instagram Story', 'Facebook Reels', 'Instagram Reels', 'Messenger']
+const money = (value: number) => `${Math.round(value).toLocaleString('mn-MN')}₮`
+const usd = (value: number) => `$${value.toFixed(2)}`
 
 export default function HomePage() {
-  const [step, setStep] = useState(0)
-  const [mobileNav, setMobileNav] = useState(false)
-  const [budget, setBudget] = useState(30000)
+  const [dailyUsd, setDailyUsd] = useState(5)
   const [days, setDays] = useState(7)
-  const [gender, setGender] = useState('Бүгд')
-  const [placementMode, setPlacementMode] = useState('Advantage+')
-  const [selectedPlacements, setSelectedPlacements] = useState(placements)
-  const [creativeMode, setCreativeMode] = useState('Одоо байгаа пост')
-  const [aiApplied, setAiApplied] = useState(false)
-  const [campaignBudget, setCampaignBudget] = useState(true)
-  const [abTest, setAbTest] = useState(false)
-  const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null)
-  const [session, setSession] = useState<SessionStatus>({ connected: false })
-  const [healthError, setHealthError] = useState('')
-  const [draftReady, setDraftReady] = useState(false)
+  const [quote, setQuote] = useState<Quote | null>(null)
+  const [meta, setMeta] = useState<MetaStatus | null>(null)
+  const [session, setSession] = useState<MetaSession>({ connected: false })
+  const [loading, setLoading] = useState(true)
+  const [paying, setPaying] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
-  const total = useMemo(() => Math.max(0, budget) * Math.max(1, days), [budget, days])
-  const score = aiApplied ? 98 : 92
+  const totalUsd = useMemo(() => Math.max(.5, dailyUsd) * Math.max(1, days), [dailyUsd, days])
+
+  async function refreshQuote(value = totalUsd) {
+    try {
+      const next = await apiFetch<Quote>(`/billing/quote?usd=${encodeURIComponent(value.toFixed(2))}`)
+      setQuote(next)
+    } catch (err: any) {
+      setError(err?.message || 'Ханшийн мэдээлэл авч чадсангүй.')
+    }
+  }
 
   useEffect(() => {
     Promise.all([
-      apiFetch<ApiStatus>('/meta/status'),
-      apiFetch<SessionStatus>('/meta/session').catch(() => ({ connected: false })),
-    ])
-      .then(([status, currentSession]) => {
-        setApiStatus(status)
-        setSession(currentSession)
-      })
-      .catch((error: Error) => setHealthError(error.message || 'Backend холболт амжилтгүй.'))
+      refreshQuote(totalUsd),
+      apiFetch<MetaStatus>('/meta/status').then(setMeta).catch(() => setMeta(null)),
+      apiFetch<MetaSession>('/meta/session').then(setSession).catch(() => setSession({ connected: false })),
+    ]).finally(() => setLoading(false))
+
+    const params = new URLSearchParams(window.location.search)
+    const paymentIntent = params.get('payment_intent')
+    if (params.get('payment') === 'success' && paymentIntent) {
+      setMessage('Wire төлбөрийн буцаалт ирлээ. Webhook баталгаажуулалт шалгаж байна…')
+      apiFetch<any>(`/billing/payment?payment_intent=${encodeURIComponent(paymentIntent)}`)
+        .then((payment) => {
+          if (payment?.wire_status === 'succeeded') setMessage('Үйлчилгээний шимтгэл амжилттай төлөгдлөө.')
+          else setMessage('Төлбөр хүлээн авсан. Wire webhook баталгаажуулалт түр хүлээгдэж байна.')
+        })
+        .catch(() => undefined)
+    }
   }, [])
 
-  const goTo = (index: number) => {
-    setStep(Math.max(0, Math.min(steps.length - 1, index)))
-    window.setTimeout(() => document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
+  useEffect(() => {
+    const timer = window.setTimeout(() => refreshQuote(totalUsd), 250)
+    return () => window.clearTimeout(timer)
+  }, [totalUsd])
+
+  async function payFee() {
+    setPaying(true)
+    setError('')
+    setMessage('')
+    try {
+      const result = await apiFetch<{ checkoutUrl: string }>('/billing/fee-checkout', {
+        method: 'POST',
+        body: JSON.stringify({ metaBudgetUsd: totalUsd }),
+      })
+      if (!result?.checkoutUrl) throw new Error('Wire checkout URL олдсонгүй.')
+      window.location.assign(result.checkoutUrl)
+    } catch (err: any) {
+      setError(err?.message || 'Wire төлбөр эхлүүлж чадсангүй.')
+      setPaying(false)
+    }
   }
 
-  const togglePlacement = (name: string) => {
-    setSelectedPlacements((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
+  async function signOut() {
+    await supabase.auth.signOut()
+    window.location.assign('/login')
   }
 
-  const connectionLabel = healthError
-    ? 'Backend алдаа'
-    : session.connected
-      ? session.profile?.name || 'Facebook холбогдсон'
-      : apiStatus?.productionReady
-        ? 'Facebook холбох'
-        : apiStatus
-          ? 'Meta тохиргоо дутуу'
-          : 'Шалгаж байна…'
+  const rateLabel = quote ? `1 USD = ${quote.fx.rate.toLocaleString('mn-MN')}₮` : 'Ханш ачаалж байна…'
 
   return (
-    <main className="appShell">
-      <aside className={mobileNav ? 'sidebar sidebarOpen' : 'sidebar'}>
-        <div className="sidebarTop">
-          <a className="brand" href="/" aria-label="Auto Boost Mongolia">
-            <div className="brandMark"><WandSparkles size={19} /></div>
-            <div><b>AUTO BOOST</b><span>MONGOLIA</span></div>
-          </a>
-          <button className="mobileClose" aria-label="Цэс хаах" onClick={() => setMobileNav(false)}><X size={20} /></button>
+    <main className={styles.page}>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <div className={styles.mark}><WandSparkles size={20}/></div>
+          <div><b>AUTO BOOST</b><span>MONGOLIA</span></div>
         </div>
-
-        <div className="workspaceBadge">
-          <span>Workspace</span>
-          <b>Үндсэн аккаунт</b>
-          <MoreHorizontal size={16} />
-        </div>
-
-        <nav className="mainNav">
-          <NavItem icon={<LayoutDashboard size={18} />} label="Хяналтын самбар" active href="#dashboard" />
-          <NavItem icon={<Megaphone size={18} />} label="Кампайн" href="#builder" onClick={() => goTo(0)} />
-          <NavItem icon={<BarChart3 size={18} />} label="Тайлан" href="#performance" />
-          <NavItem icon={<Bot size={18} />} label="AI зөвлөмж" href="#assistant" badge="AI" />
-          <NavItem icon={<Facebook size={18} />} label="Facebook холболт" href="/facebook" />
+        <div className={styles.workspace}><small>WORKSPACE</small><b>Үндсэн аккаунт</b></div>
+        <nav className={styles.nav}>
+          <a className={styles.active} href="#studio"><LayoutDashboard size={18}/><span>Хяналтын самбар</span></a>
+          <a href="#boost"><Megaphone size={18}/><span>Шинэ boost</span></a>
+          <a href="#money"><CircleDollarSign size={18}/><span>Төлбөр</span></a>
+          <a href="/facebook"><Facebook size={18}/><span>Facebook холболт</span></a>
+          <a href="#"><BarChart3 size={18}/><span>Тайлан</span></a>
+          <a href="#"><Bot size={18}/><span>AI зөвлөмж</span></a>
+          <a href="#"><Settings size={18}/><span>Тохиргоо</span></a>
         </nav>
-
-        <div className="navDivider" />
-        <nav className="mainNav secondaryNav">
-          <NavItem icon={<Settings size={18} />} label="Тохиргоо" href="#settings" />
-          <NavItem icon={<ShieldCheck size={18} />} label="Аюулгүй байдал" href="#security" />
-        </nav>
-
-        <div className="sidebarUpgrade">
-          <div className="upgradeIcon"><Sparkles size={18} /></div>
-          <b>AI Campaign Copilot</b>
-          <p>Төсөв, audience, creative-ийг нийтлэхийн өмнө автоматаар шалгана.</p>
-          <span>2026 Beta</span>
+        <div className={styles.sidebarBottom}>
+          <div className={styles.miniCard}><span>SPEND PROTECTION</span><b>PAUSED-first</b><p>Зар хэрэглэгчийн баталгаагүйгээр автоматаар ACTIVE болохгүй.</p></div>
         </div>
       </aside>
 
-      {mobileNav && <button className="navBackdrop" aria-label="Цэс хаах" onClick={() => setMobileNav(false)} />}
-
-      <section className="mainArea">
-        <header className="appHeader">
-          <div className="headerLeft">
-            <button className="mobileMenu" aria-label="Цэс нээх" onClick={() => setMobileNav(true)}><Menu size={20} /></button>
-            <div className="crumbs"><span>Auto Boost</span><i>/</i><b>Хяналтын самбар</b></div>
-          </div>
-          <div className="headerActions">
-            <div className={healthError ? 'systemPill systemError' : 'systemPill'}>
-              <i />
-              <span>{healthError ? 'API тасарсан' : 'Систем хэвийн'}</span>
-            </div>
-            <button className="iconButton" aria-label="Мэдэгдэл"><Bell size={18} /></button>
-            <a className={session.connected ? 'profileButton connected' : 'profileButton'} href="/facebook">
-              <div className="profileAvatar">{session.connected ? '✓' : 'f'}</div>
-              <div><b>{connectionLabel}</b><span>{session.connected ? 'Meta session идэвхтэй' : 'Meta Ads account'}</span></div>
-              <ChevronRight size={16} />
-            </a>
+      <section className={styles.main} id="studio">
+        <header className={styles.topbar}>
+          <div className={styles.crumb}>Auto Boost / <b>Boost Studio</b></div>
+          <div className={styles.statusGroup}>
+            <div className={styles.status}><i className={styles.dot}/><span>{loading ? 'Шалгаж байна' : 'Систем online'}</span></div>
+            <button className={styles.profile} onClick={signOut} title="Гарах">AB</button>
           </div>
         </header>
 
-        <div className="pageWrap" id="dashboard">
-          <section className="heroPanel">
-            <div className="heroCopy">
-              <div className="heroEyebrow"><Sparkles size={14} /> AI ADS MANAGER · MONGOLIA</div>
-              <h1>Зараа илүү ухаалгаар<br /><span>өсгө.</span></h1>
-              <p>Meta Ads Manager-ийн мэргэжлийн тохиргоо, AI шалгалт, тайланг нэг цэвэр Монгол интерфэйсээс удирдана.</p>
-              <div className="heroActions">
-                <button className="button primaryButton" onClick={() => goTo(0)}><Plus size={18} /> Шинэ зар үүсгэх</button>
-                <a className="button ghostButton" href="/facebook"><Facebook size={18} /> Facebook холбох</a>
-              </div>
+        <section className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <span className={styles.kicker}><Sparkles size={14}/> MONGOLIAN META ADS STUDIO</span>
+            <h1>Boost төсвөө <em>₮-өөр ойлгомжтой</em> удирд.</h1>
+            <p>Meta-ийн долларын төсөв, Монголбанкны USD/MNT ханш, Auto Boost үйлчилгээний шимтгэл гурвыг нэг дэлгэц дээр бодитоор салгаж харуулна.</p>
+            <div className={styles.heroActions}>
+              <a className={styles.primary} href="#boost"><Zap size={17}/> Boost тохируулах</a>
+              <a className={styles.secondary} href="/facebook"><Facebook size={17}/> Facebook холбох</a>
             </div>
-            <div className="heroVisual" aria-hidden="true">
-              <div className="orb orbOne" />
-              <div className="orb orbTwo" />
-              <div className="metricFloat metricA"><span>CTR</span><b>+24%</b><small>AI optimization</small></div>
-              <div className="metricFloat metricB"><span>Quality</span><b>{score}/100</b><small>Campaign score</small></div>
-              <div className="heroRing"><Rocket size={34} /><span>READY</span></div>
+          </div>
+          <div className={styles.heroImage}>
+            <div className={styles.floatingAd}>
+              <div className={styles.adHead}><div className={styles.adAvatar}>AB</div><div><b>Auto Boost Mongolia</b><span>Sponsored · Meta</span></div></div>
+              <p className={styles.adText}>Монгол хэлтэй AI Ads Manager — төсөв, audience, creative бүгд нэг дор.</p>
+              <div className={styles.adCreative}>BOOST SMARTER.</div>
+              <div className={styles.adCta}><small>auto-boost-mongolia.vercel.app</small><button>Дэлгэрэнгүй</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div className={styles.grid} id="boost">
+          <section className={`${styles.card} ${styles.builder}`}>
+            <div className={styles.cardHead}>
+              <div><span className={styles.eyebrow}>NEW BOOST</span><h2>Зарын үндсэн тохиргоо</h2></div>
+              <span className={styles.stepPill}>01 / 03 · Төсөв</span>
+            </div>
+
+            <div className={styles.fields}>
+              <label className={`${styles.field} ${styles.full}`}><span>Кампайны нэр</span><input defaultValue="2026 · Facebook Boost"/></label>
+              <label className={styles.field}><span>Зорилго</span><select defaultValue="messages"><option value="messages">Мессеж авах</option><option value="engagement">Оролцоо нэмэх</option><option value="traffic">Веб хандалт</option><option value="sales">Борлуулалт</option></select></label>
+              <label className={styles.field}><span>Хугацаа</span><select value={days} onChange={e=>setDays(Number(e.target.value))}>{[3,5,7,10,14,30].map(x=><option key={x} value={x}>{x} хоног</option>)}</select></label>
+
+              <div className={styles.budgetBlock}>
+                <div className={styles.budgetTop}>
+                  <div><span>ӨДРИЙН META BUDGET</span><b>{usd(dailyUsd)}</b></div>
+                  <em>≈ {quote ? money(quote.adBudgetMnt / days) : '—'} / өдөр</em>
+                </div>
+                <input className={styles.slider} type="range" min="1" max="100" step="1" value={dailyUsd} onChange={e=>setDailyUsd(Number(e.target.value))}/>
+                <div className={styles.budgetMeta}>
+                  <div><small>Нийт Meta budget</small><b>{usd(totalUsd)}</b></div>
+                  <div><small>Монгол төгрөгөөр</small><b>{quote ? money(quote.adBudgetMnt) : '—'}</b></div>
+                  <div><small>Ханш</small><b>{rateLabel}</b></div>
+                </div>
+              </div>
+
+              <label className={`${styles.field} ${styles.full}`}><span>Audience</span><input defaultValue="Улаанбаатар · 23–45 нас · Бүгд"/><small>Дараагийн шатанд Meta targeting-ийг нарийвчилна.</small></label>
+              <div className={`${styles.field} ${styles.full}`}><span>Creative</span><div className={styles.upload}><div><ImagePlus size={23}/><strong>Пост эсвэл зураг / видео сонгох</strong><small>Facebook existing post, 1:1, 4:5, 9:16 creative</small></div></div></div>
             </div>
           </section>
 
-          <section className="statGrid" id="performance">
-            <StatCard icon={<CircleDollarSign size={18} />} label="Төлөвлөсөн төсөв" value={`${total.toLocaleString()}₮`} sub={`${days} хоногийн дээд хэмжээ`} trend="live" />
-            <StatCard icon={<Gauge size={18} />} label="AI үнэлгээ" value={`${score}/100`} sub={aiApplied ? 'Санал хэрэглэгдсэн' : '1 санал хүлээж байна'} trend="good" />
-            <StatCard icon={<Users size={18} />} label="Audience" value="23–45" sub="Улаанбаатар · Бүгд" />
-            <StatCard icon={<MonitorSmartphone size={18} />} label="Placement" value={placementMode} sub={`${selectedPlacements.length} байршил сонгосон`} />
-          </section>
+          <aside className={styles.side} id="money">
+            <section className={`${styles.card} ${styles.moneyCard}`}>
+              <div className={styles.moneyTitle}><div><span className={styles.moneyIcon}><WalletCards size={18}/></span><b>Төсвийн тооцоо</b></div><span className={styles.live}>LIVE MNT</span></div>
+              <div className={styles.rateBox}><span>Монголбанк USD/MNT</span><div><b>{rateLabel}</b><small>{quote?.fx.rateDate || '—'} · official reference</small></div></div>
 
-          {(healthError || (apiStatus && !apiStatus.productionReady)) && (
-            <section className={healthError ? 'noticeBanner dangerNotice' : 'noticeBanner'}>
-              <div className="noticeIcon"><ShieldCheck size={20} /></div>
-              <div>
-                <b>{healthError ? 'Backend API холболтыг шалгана уу' : 'Meta production тохиргоо бүрэн биш байна'}</b>
-                <p>{healthError || 'META_APP_ID, META_APP_SECRET, SESSION_SECRET, HTTPS redirect URI-г backend environment дээр бүрэн тохируулна уу.'}</p>
+              <div className={styles.breakdown}>
+                <div className={styles.row}><span>Meta-д зарцуулах төсөв</span><b>{quote ? money(quote.adBudgetMnt) : '—'}</b></div>
+                <div className={`${styles.row} ${styles.rowFee}`}><span>Auto Boost үйлчилгээний шимтгэл ({quote?.serviceFeePercent ?? 10}%)</span><b>{quote ? money(quote.serviceFeeMnt) : '—'}</b></div>
               </div>
-              <a href="/facebook">Шалгах <ArrowRight size={16} /></a>
+
+              <div className={styles.grand}><span>НИЙТ ҮНЭЛГЭЭ</span><b>{quote ? money(quote.totalDisplayMnt) : '—'}</b><small>Meta spend + Auto Boost fee</small></div>
+
+              <button className={styles.payButton} onClick={payFee} disabled={paying || !quote}><WalletCards size={17}/>{paying ? 'Wire checkout нээж байна…' : `Шимтгэл ${quote ? money(quote.serviceFeeMnt) : ''} төлөх`}</button>
+              <div className={styles.wireNote}><ShieldCheck size={14}/><span>Wire.mn-аар зөвхөн Auto Boost үйлчилгээний шимтгэл төлөгдөнө. Meta зарын төсөв таны Meta Ad Account-ийн өөрийн payment method-оор Meta руу төлөгдөнө.</span></div>
+              {message && <div className={styles.toast}>{message}</div>}
+              {error && <div className={styles.error}>{error}</div>}
             </section>
-          )}
 
-          <section className="builderSection" id="builder">
-            <div className="sectionTitleRow">
-              <div>
-                <span className="sectionKicker">CAMPAIGN BUILDER</span>
-                <h2>Шинэ зар үүсгэх</h2>
-                <p>Алхам бүрийг дуусгаад AI шалгалтаар баталгаажуулна.</p>
-              </div>
-              <div className="draftPill"><i /> Draft автоматаар хадгалагдана</div>
-            </div>
-
-            <div className="builderLayout">
-              <div className="builderMain">
-                <div className="stepRail">
-                  {steps.map((item, index) => (
-                    <button key={item.label} className={index === step ? 'stepItem current' : index < step ? 'stepItem complete' : 'stepItem'} onClick={() => goTo(index)}>
-                      <span className="stepNumber">{index < step ? <Check size={14} /> : index + 1}</span>
-                      <span className="stepText"><b>{item.label}</b><small>{item.short}</small></span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="formSurface">
-                  {step === 0 && (
-                    <>
-                      <FormHeader icon={<Target size={20} />} eyebrow="01 · CAMPAIGN" title="Кампайны үндсэн тохиргоо" text="Бизнесийн зорилго болон төсвийн стратегиа тодорхойлно." />
-                      <div className="formGrid single">
-                        <Field label="Кампайны нэр" required><input defaultValue="2026 Намрын сурталчилгаа" /></Field>
-                      </div>
-                      <Field label="Зарын зорилго" hint="Meta-ийн 6 үндсэн campaign objective-оос сонгоно." required>
-                        <div className="objectiveGrid">
-                          {[
-                            ['awareness', 'Таниулах', 'Брэндийн танигдалт'],
-                            ['traffic', 'Хандалт', 'Веб, апп руу урсгал'],
-                            ['engagement', 'Оролцоо', 'Message, like, video'],
-                            ['leads', 'Lead', 'Харилцагчийн мэдээлэл'],
-                            ['sales', 'Борлуулалт', 'Purchase, conversion'],
-                            ['app', 'Апп', 'Install, app event'],
-                          ].map(([value, title, sub], index) => (
-                            <label key={value} className={index === 2 ? 'objectiveCard selectedObjective' : 'objectiveCard'}>
-                              <input type="radio" name="objective" defaultChecked={index === 2} />
-                              <span className="objectiveDot" />
-                              <b>{title}</b><small>{sub}</small>
-                            </label>
-                          ))}
-                        </div>
-                      </Field>
-                      <div className="formGrid">
-                        <Field label="Өдрийн төсөв" required><div className="inputAffix"><input type="number" min="1000" value={budget} onChange={(event) => setBudget(Number(event.target.value))} /><span>₮</span></div></Field>
-                        <Field label="Хугацаа" required><div className="inputAffix"><input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /><span>хоног</span></div></Field>
-                      </div>
-                      <div className="budgetSummary">
-                        <span><CircleDollarSign size={17} /> Тооцоолсон нийт дээд төсөв</span>
-                        <b>{total.toLocaleString()}₮</b>
-                      </div>
-                      <Toggle checked={campaignBudget} onChange={setCampaignBudget} title="Advantage campaign budget" text="Meta хамгийн сайн ажиллаж буй ad set рүү төсвийг автоматаар хуваарилна." badge="Санал болгоно" />
-                      <Toggle checked={abTest} onChange={setAbTest} title="A/B туршилт" text="Audience, creative эсвэл placement-ийн хоёр хувилбарыг туршина." />
-                    </>
-                  )}
-
-                  {step === 1 && (
-                    <>
-                      <FormHeader icon={<Users size={20} />} eyebrow="02 · AD SET" title="Audience & delivery" text="Хэн, хаана, ямар төхөөрөмж дээр таны зарыг харахыг тохируулна." />
-                      <div className="formGrid">
-                        <Field label="Байршил" required><input defaultValue="Улаанбаатар, Монгол" /></Field>
-                        <Field label="Radius"><select defaultValue="25"><option value="10">+10 км</option><option value="25">+25 км</option><option value="40">+40 км</option><option value="80">+80 км</option></select></Field>
-                      </div>
-                      <div className="formGrid">
-                        <Field label="Доод нас"><input type="number" defaultValue={23} min={18} max={65} /></Field>
-                        <Field label="Дээд нас"><input type="number" defaultValue={45} min={18} max={65} /></Field>
-                      </div>
-                      <Field label="Хүйс"><Segmented options={['Бүгд', 'Эрэгтэй', 'Эмэгтэй']} value={gender} onChange={setGender} /></Field>
-                      <Field label="Сонирхол ба зан төлөв" hint="Detailed targeting: сонирхол, зан төлөв, демографик мэдээлэл."><input placeholder="Жишээ: Онлайн худалдаа, Технологи, Бизнес" /></Field>
-                      <Field label="Placement"><Segmented options={['Advantage+', 'Гараар сонгох']} value={placementMode} onChange={setPlacementMode} /></Field>
-                      <div className={placementMode === 'Advantage+' ? 'placementGrid placementDisabled' : 'placementGrid'}>
-                        {placements.map((item) => (
-                          <label key={item} className={selectedPlacements.includes(item) ? 'placementOption selectedPlacement' : 'placementOption'}>
-                            <input type="checkbox" checked={selectedPlacements.includes(item)} disabled={placementMode === 'Advantage+'} onChange={() => togglePlacement(item)} />
-                            <span className="customCheck"><Check size={12} /></span>
-                            <span>{item}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div className="audienceMeter"><span>Audience хэмжээ</span><div><i style={{ width: '68%' }} /></div><b>Өргөн · Сайн</b></div>
-                    </>
-                  )}
-
-                  {step === 2 && (
-                    <>
-                      <FormHeader icon={<Megaphone size={20} />} eyebrow="03 · AD" title="Creative & message" text="Одоо байгаа Page пост ашиглах эсвэл шинэ creative бэлтгэнэ." />
-                      <Field label="Зарын төрөл"><Segmented options={['Одоо байгаа пост', 'Шинэ зар']} value={creativeMode} onChange={setCreativeMode} /></Field>
-                      {creativeMode === 'Одоо байгаа пост' ? (
-                        <Field label="Facebook пост" required><select><option>Google AI Pro — 1 жилийн эрх...</option><option>Шинэ үйлчилгээний танилцуулга...</option></select></Field>
-                      ) : (
-                        <Field label="Creative файл" hint="JPG, PNG, MP4 · Reels-д 9:16 санал болгоно."><label className="uploadZone"><input type="file" accept="image/*,video/*" /><Sparkles size={22} /><b>Зураг эсвэл видеогоо сонго</b><span>эсвэл энд чирж оруулна уу</span></label></Field>
-                      )}
-                      <Field label="Үндсэн текст" required><textarea rows={5} defaultValue="AI ашиглан ажлаа хурдасгаж, бизнесийн контентоо илүү хурдан бүтээгээрэй." /></Field>
-                      <div className="formGrid">
-                        <Field label="Гарчиг"><input defaultValue="Google AI Pro" /></Field>
-                        <Field label="CTA"><select><option>Мессеж илгээх</option><option>Дэлгэрэнгүй</option><option>Худалдан авах</option><option>Бүртгүүлэх</option></select></Field>
-                      </div>
-                      <Field label="Очих холбоос"><input placeholder="https://..." inputMode="url" /></Field>
-                      <Field label="UTM tracking"><input placeholder="utm_source=facebook&utm_campaign=..." /></Field>
-                    </>
-                  )}
-
-                  {step === 3 && (
-                    <>
-                      <FormHeader icon={<Bot size={20} />} eyebrow="04 · AI QUALITY" title="Нийтлэхийн өмнөх AI шалгалт" text="Төсөв, audience, placement, creative болон tracking-ийг нэг дор шалгана." />
-                      <div className="qualityHero">
-                        <div className="qualityScore"><strong>{score}</strong><span>/100</span></div>
-                        <div><b>{score >= 95 ? 'Нийтлэхэд маш сайн бэлэн' : 'Нийтлэхэд бэлэн, 1 сайжруулалт байна'}</b><p>AI нь техникийн болон performance эрсдэлийг шалгасан.</p></div>
-                      </div>
-                      <div className="auditList">
-                        <Audit title="Төсөв ба хугацаа" text={`${budget.toLocaleString()}₮ × ${days} хоног — хэвийн хүрээнд.`} ok />
-                        <Audit title="Audience" text={`23–45 нас · ${gender} · Улаанбаатар.`} ok />
-                        <Audit title="Placement coverage" text={`${placementMode} · ${selectedPlacements.length} placement.`} ok />
-                        <Audit title="Creative aspect ratio" text={aiApplied ? '9:16 Reels creative зөвлөмж хэрэглэгдсэн.' : 'Reels-д 9:16 creative нэмбэл coverage сайжирна.'} ok={aiApplied} />
-                      </div>
-                      {!aiApplied && <button className="aiFixButton" onClick={() => setAiApplied(true)}><Sparkles size={17} /> AI саналыг хэрэглэх <ArrowRight size={16} /></button>}
-                    </>
-                  )}
-
-                  {step === 4 && (
-                    <>
-                      <FormHeader icon={<ShieldCheck size={20} />} eyebrow="05 · REVIEW" title="Эцсийн баталгаажуулалт" text="Зарын мэдээлэл, төсөв, creative-ийг шалгаад draft бэлтгэнэ." />
-                      <div className="reviewGrid">
-                        <div className="reviewDetails">
-                          <ReviewRow label="Кампайн" value="2026 Намрын сурталчилгаа" />
-                          <ReviewRow label="Зорилго" value="Оролцоо / Мессеж" />
-                          <ReviewRow label="Audience" value={`23–45 · ${gender} · Улаанбаатар`} />
-                          <ReviewRow label="Placement" value={placementMode} />
-                          <ReviewRow label="Нийт төсөв" value={`${total.toLocaleString()}₮`} strong />
-                          <div className="safetyCard"><ShieldCheck size={20} /><div><b>Зардлын хамгаалалт</b><p>Систем эхлээд <strong>PAUSED</strong> төлөвөөр draft үүсгэнэ. Таны тусдаа баталгаажуулалтгүйгээр ACTIVE болгохгүй.</p></div></div>
-                        </div>
-                        <AdPreview />
-                      </div>
-                      {draftReady && <div className="successBanner"><Check size={18} /><div><b>Draft тохиргоо бэлэн боллоо</b><p>Facebook холболт болон Ad Account сонголт хийгдсэний дараа Meta дээр PAUSED зар үүсгэхэд бэлэн.</p></div></div>}
-                    </>
-                  )}
-
-                  <div className="formFooter">
-                    <button className="button textButton" disabled={step === 0} onClick={() => goTo(step - 1)}><ChevronLeft size={18} /> Өмнөх</button>
-                    <div className="footerHint">{step + 1} / {steps.length}</div>
-                    <button className="button primaryButton" onClick={() => step === steps.length - 1 ? setDraftReady(true) : goTo(step + 1)}>
-                      {step === steps.length - 1 ? 'Draft бэлтгэх' : 'Үргэлжлүүлэх'} {step === steps.length - 1 ? <Rocket size={17} /> : <ChevronRight size={18} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <aside className="copilotPanel" id="assistant">
-                <div className="copilotHeader">
-                  <div className="copilotIcon"><Sparkles size={18} /></div>
-                  <div><b>AI Copilot</b><span>Live campaign review</span></div>
-                  <div className="liveDot"><i /> LIVE</div>
-                </div>
-                <div className="scoreCard">
-                  <div className="scoreTop"><span>Campaign quality</span><b>{score}<small>/100</small></b></div>
-                  <div className="scoreTrack"><i style={{ width: `${score}%` }} /></div>
-                  <p>{score >= 95 ? 'Маш сайн тохиргоо. Гол эрсдэл илрээгүй.' : 'Тохиргоо сайн. Нэг creative сайжруулалт байна.'}</p>
-                </div>
-                <div className="insightCard positive"><span className="insightIcon"><Check size={14} /></span><div><b>Audience тохиромжтой</b><p>23–45 нас, Улаанбаатарын хүрээ зорилготой нийцэж байна.</p></div></div>
-                <div className="insightCard"><span className="insightIcon"><Sparkles size={14} /></span><div><b>Creative санал</b><p>{aiApplied ? 'Reels creative зөвлөмж хэрэглэгдсэн.' : '9:16 видео нэмбэл Reels inventory бүрэн ашиглана.'}</p>{!aiApplied && <button onClick={() => setAiApplied(true)}>1 товшилтоор хэрэглэх</button>}</div></div>
-                <div className="spendCard"><div><span>Нийт дээд зардал</span><b>{total.toLocaleString()}₮</b></div><CircleDollarSign size={22} /></div>
-                <div className="metaStatusCard">
-                  <div className="metaStatusRow"><span>Backend API</span><b className={healthError ? 'badState' : 'goodState'}>{healthError ? 'Алдаа' : 'Online'}</b></div>
-                  <div className="metaStatusRow"><span>Meta App</span><b className={apiStatus?.configured ? 'goodState' : 'warnState'}>{apiStatus?.configured ? 'Configured' : 'Setup'}</b></div>
-                  <div className="metaStatusRow"><span>Facebook</span><b className={session.connected ? 'goodState' : 'warnState'}>{session.connected ? 'Connected' : 'Not connected'}</b></div>
-                </div>
-              </aside>
-            </div>
-          </section>
-
-          <section className="bottomGrid" id="settings">
-            <div className="bottomCard">
-              <div className="bottomIcon"><ShieldCheck size={20} /></div>
-              <div><b>Зардлын аюулгүй горим</b><p>Шинээр үүссэн campaign, ad set, ad бүгд PAUSED төлөвөөс эхэлнэ.</p></div>
-            </div>
-            <div className="bottomCard" id="security">
-              <div className="bottomIcon"><Facebook size={20} /></div>
-              <div><b>Meta Direct API</b><p>Windsor болон гуравдагч талын data connector ашиглахгүй.</p></div>
-            </div>
-            <div className="bottomCard">
-              <div className="bottomIcon"><Sparkles size={20} /></div>
-              <div><b>Монгол AI assistant</b><p>Алдааг Монгол хэлээр тайлбарлаж, сайжруулалтыг шууд санал болгоно.</p></div>
-            </div>
-          </section>
+            <section className={`${styles.card} ${styles.statusCard}`}>
+              <h3>Нийтлэхийн өмнөх шалгалт</h3>
+              <div className={styles.check}><i>✓</i><span>USD → MNT ханш ачаалсан</span></div>
+              <div className={session.connected ? styles.check : `${styles.check} ${styles.warn}`}><i>{session.connected ? '✓' : '!'}</i><span>{session.connected ? `${session.profile?.name || 'Facebook'} холбогдсон` : 'Facebook Ads холбоно уу'}</span></div>
+              <div className={meta?.productionReady ? styles.check : `${styles.check} ${styles.warn}`}><i>{meta?.productionReady ? '✓' : '!'}</i><span>{meta?.productionReady ? 'Meta API production ready' : 'Meta App тохиргоо шалгана уу'}</span></div>
+              <div className={styles.check}><i>✓</i><span>Шинэ зар PAUSED төлөвөөр үүснэ</span></div>
+              <div className={styles.footerLine}><span>FX source</span><b>{quote?.fx.source === 'bank_of_mongolia' ? 'Монголбанк' : quote?.fx.source || '—'}</b></div>
+            </section>
+          </aside>
         </div>
       </section>
     </main>
   )
-}
-
-function NavItem({ icon, label, href, active, badge, onClick }: { icon: ReactNode; label: string; href: string; active?: boolean; badge?: string; onClick?: () => void }) {
-  return <a className={active ? 'navItem navActive' : 'navItem'} href={href} onClick={onClick}>{icon}<span>{label}</span>{badge && <em>{badge}</em>}</a>
-}
-
-function StatCard({ icon, label, value, sub, trend }: { icon: ReactNode; label: string; value: string; sub: string; trend?: 'live' | 'good' }) {
-  return <article className="statCard"><div className="statIcon">{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{trend === 'live' && <i className="miniLive" />}{sub}</small></div></article>
-}
-
-function FormHeader({ icon, eyebrow, title, text }: { icon: ReactNode; eyebrow: string; title: string; text: string }) {
-  return <div className="formHeader"><div className="formIcon">{icon}</div><div><span>{eyebrow}</span><h3>{title}</h3><p>{text}</p></div></div>
-}
-
-function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: ReactNode }) {
-  return <label className="field"><span className="fieldLabel">{label}{required && <em>*</em>}</span>{children}{hint && <small>{hint}</small>}</label>
-}
-
-function Toggle({ checked, onChange, title, text, badge }: { checked: boolean; onChange: (value: boolean) => void; title: string; text: string; badge?: string }) {
-  return <div className="toggleRow"><div><div className="toggleTitle"><b>{title}</b>{badge && <span>{badge}</span>}</div><p>{text}</p></div><button type="button" role="switch" aria-checked={checked} className={checked ? 'switch switchOn' : 'switch'} onClick={() => onChange(!checked)}><i /></button></div>
-}
-
-function Segmented({ options, value, onChange }: { options: string[]; value: string; onChange: (value: string) => void }) {
-  return <div className="segmented">{options.map((option) => <button type="button" key={option} className={value === option ? 'segment selectedSegment' : 'segment'} onClick={() => onChange(option)}>{option}</button>)}</div>
-}
-
-function Audit({ title, text, ok }: { title: string; text: string; ok?: boolean }) {
-  return <div className={ok ? 'auditItem auditOk' : 'auditItem auditWarn'}><span>{ok ? <Check size={14} /> : '!'}</span><div><b>{title}</b><p>{text}</p></div></div>
-}
-
-function ReviewRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return <div className="reviewRow"><span>{label}</span><b className={strong ? 'reviewStrong' : ''}>{value}</b></div>
-}
-
-function AdPreview() {
-  return <div className="adPreviewWrap"><span className="previewLabel">FACEBOOK FEED PREVIEW</span><div className="adPreview"><div className="previewHead"><div className="previewAvatar">AB</div><div><b>Auto Boost Mongolia</b><span>Sponsored · 🌐</span></div><MoreHorizontal size={18} /></div><p>AI ашиглан ажлаа хурдасгаж, бизнесийн контентоо илүү хурдан бүтээгээрэй.</p><div className="previewCreative"><div className="creativeGlow" /><Sparkles size={32} /><b>GOOGLE AI PRO</b><span>AI-тай илүү хурдан ажилла</span></div><div className="previewFooter"><div><small>AUTOBOOST.MN</small><b>Google AI Pro</b></div><button>Мессеж илгээх</button></div></div></div>
 }
