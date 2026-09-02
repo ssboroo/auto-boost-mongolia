@@ -10,6 +10,16 @@ export class WindsorController {
     return this.windsor.getStatus()
   }
 
+  @Get('connect-info')
+  connectInfo() {
+    return this.windsor.getConnectInfo()
+  }
+
+  @Get('accounts')
+  accounts() {
+    return this.windsor.listAccounts()
+  }
+
   @Get('actions')
   actions() {
     return this.windsor.listActions()
