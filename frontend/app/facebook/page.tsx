@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import styles from './page.module.css'
 
-const API = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/api/backend' : 'http://localhost:4000')
+const API = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://auto-boost-api.vercel.app' : 'http://localhost:4000')
 
 type Status = { configured: boolean; graphVersion: string; redirectUri: string; provider: string }
 
@@ -14,9 +14,12 @@ export default function FacebookConnectionPage() {
 
   useEffect(() => {
     fetch(`${API}/meta/status`, { cache: 'no-store' })
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`Backend HTTP ${r.status}`)
+        return r.json()
+      })
       .then(setStatus)
-      .catch(() => setError('Backend-тэй холбогдож чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.'))
+      .catch((e) => setError(`Backend-тэй холбогдож чадсангүй. ${e?.message || 'Серверийн холболтыг шалгана уу.'}`))
       .finally(() => setLoading(false))
   }, [])
 
@@ -44,7 +47,7 @@ export default function FacebookConnectionPage() {
             <h1>Facebook Ads аккаунтаа холбоно уу</h1>
             <p>Windsor ашиглахгүй. Auto Boost Mongolia нь Meta Graph / Marketing API-тай шууд холбогдоно.</p>
           </div>
-          <div className={styles.badge}>{status?.configured ? 'Meta API бэлэн' : 'App тохиргоо шаардлагатай'}</div>
+          <div className={styles.badge}>{status?.configured ? 'Meta API бэлэн' : loading ? 'Backend шалгаж байна…' : 'App тохиргоо шаардлагатай'}</div>
         </section>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -57,7 +60,7 @@ export default function FacebookConnectionPage() {
             <button className={styles.primary} onClick={connectFacebook} disabled={!status?.configured || loading}>
               Facebook Ads холбох
             </button>
-            {!status?.configured && <small>Vercel Environment Variables хэсэгт META_APP_ID болон META_APP_SECRET оруулна уу.</small>}
+            {!status?.configured && !loading && <small>Backend ажиллаж байгаа бол Vercel Environment Variables хэсэгт META_APP_ID болон META_APP_SECRET тохируулсан эсэхийг шалгана уу.</small>}
           </section>
 
           <section className={styles.card}>
@@ -65,7 +68,7 @@ export default function FacebookConnectionPage() {
             <h2>2. Эрхийн шалгалт</h2>
             <p>Холболтын дараа Page, Ad Account, Campaign, Post болон Insights мэдээллийг шууд Meta API-аас авна.</p>
             <div className={styles.empty}>
-              {status?.configured ? `Graph API ${status.graphVersion} тохируулагдсан` : 'Meta Developer App тохируулаагүй байна.'}
+              {status?.configured ? `Graph API ${status.graphVersion} тохируулагдсан` : loading ? 'Backend холболтыг шалгаж байна…' : 'Meta Developer App тохируулаагүй байна.'}
             </div>
           </section>
         </div>
