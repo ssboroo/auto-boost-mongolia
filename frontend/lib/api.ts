@@ -1,8 +1,7 @@
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? 'https://auto-boost-api.vercel.app'
-    : 'http://localhost:4000')
+  process.env.NODE_ENV === 'production'
+    ? '/api'
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -25,8 +24,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   if (!response.ok) {
-    const message = data?.message || data?.error || `API алдаа (${response.status})`
-    throw new Error(Array.isArray(message) ? message.join(', ') : String(message))
+    const raw = data?.message || data?.error || `API алдаа (${response.status})`
+    const message = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'object' ? JSON.stringify(raw) : String(raw)
+    throw new Error(message)
   }
 
   return data as T
