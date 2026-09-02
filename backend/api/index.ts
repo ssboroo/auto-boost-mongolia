@@ -6,7 +6,10 @@ import { AppModule } from '../src/app.module'
 let serverPromise: Promise<any> | null = null
 
 async function createServer() {
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] })
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
+    rawBody: true,
+  })
 
   const configuredOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000'
   app.enableCors({
