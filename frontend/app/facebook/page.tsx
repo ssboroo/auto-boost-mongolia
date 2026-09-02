@@ -5,44 +5,29 @@ import styles from './page.module.css'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
-type Status = { configured: boolean; accountConfigured: boolean; connector: string }
-type Account = { id: string; name: string }
+type Status = { configured: boolean; graphVersion: string; redirectUri: string; provider: string }
 
 export default function FacebookConnectionPage() {
   const [status, setStatus] = useState<Status | null>(null)
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function load() {
-    setLoading(true)
-    setError('')
-    try {
-      const statusRes = await fetch(`${API}/meta/status`, { cache: 'no-store' })
-      const statusData = await statusRes.json()
-      setStatus(statusData)
-
-      if (statusData.configured) {
-        const accountsRes = await fetch(`${API}/meta/accounts`, { cache: 'no-store' })
-        if (accountsRes.ok) setAccounts(await accountsRes.json())
-      }
-    } catch {
-      setError('Backend-тэй холбогдож чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    fetch(`${API}/meta/status`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(setStatus)
+      .catch(() => setError('Backend-тэй холбогдож чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.'))
+      .finally(() => setLoading(false))
+  }, [])
 
   async function connectFacebook() {
     setError('')
     try {
-      const res = await fetch(`${API}/meta/connect-info`, { cache: 'no-store' })
+      const res = await fetch(`${API}/meta/auth/url`, { cache: 'no-store' })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.message || 'Холболтын URL авч чадсангүй.')
-      if (!data?.connectUrl) throw new Error('Facebook холболтын URL олдсонгүй.')
-      window.location.href = data.connectUrl
+      if (!res.ok) throw new Error(data?.message || 'Facebook Login URL авч чадсангүй.')
+      if (!data?.url) throw new Error('Facebook Login URL олдсонгүй.')
+      window.location.href = data.url
     } catch (e: any) {
       setError(e?.message || 'Facebook холболтыг эхлүүлж чадсангүй.')
     }
@@ -55,11 +40,11 @@ export default function FacebookConnectionPage() {
 
         <section className={styles.hero}>
           <div>
-            <span className={styles.kicker}>META ХОЛБОЛТ</span>
+            <span className={styles.kicker}>META DIRECT API</span>
             <h1>Facebook Ads аккаунтаа холбоно уу</h1>
-            <p>Зарын аккаунт, кампайн, зарын багц, зар болон тайлангаа Auto Boost Mongolia-аас Монгол хэлээр удирдана.</p>
+            <p>Windsor ашиглахгүй. Auto Boost Mongolia нь Meta Graph / Marketing API-тай шууд холбогдоно.</p>
           </div>
-          <div className={styles.badge}>{status?.configured ? 'Windsor бэлэн' : 'Тохиргоо шаардлагатай'}</div>
+          <div className={styles.badge}>{status?.configured ? 'Meta API бэлэн' : 'App тохиргоо шаардлагатай'}</div>
         </section>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -68,37 +53,30 @@ export default function FacebookConnectionPage() {
           <section className={styles.card}>
             <div className={styles.icon}>f</div>
             <h2>1. Facebook эрх олгох</h2>
-            <p>Meta-ийн аюулгүй OAuth цонхоор нэвтэрнэ. Facebook нууц үг Auto Boost Mongolia-д хадгалагдахгүй.</p>
+            <p>Facebook-ийн албан ёсны OAuth цонхоор нэвтэрнэ. Таны Facebook нууц үгийг Auto Boost Mongolia харахгүй, хадгалахгүй.</p>
             <button className={styles.primary} onClick={connectFacebook} disabled={!status?.configured || loading}>
               Facebook Ads холбох
             </button>
-            {!status?.configured && <small>Эхлээд backend/.env дотор WINDSOR_API_KEY оруулна уу.</small>}
+            {!status?.configured && <small>backend/.env дотор META_APP_ID болон META_APP_SECRET оруулна уу.</small>}
           </section>
 
           <section className={styles.card}>
-            <div className={styles.iconAlt}>₮</div>
-            <h2>2. Зарын аккаунт сонгох</h2>
-            <p>Facebook холбосны дараа ашиглах боломжтой зарын аккаунтууд энд гарна.</p>
-            {loading ? <div className={styles.empty}>Шалгаж байна...</div> : accounts.length ? (
-              <div className={styles.accounts}>
-                {accounts.map(account => (
-                  <label className={styles.account} key={account.id}>
-                    <input type="radio" name="account" />
-                    <span><b>{account.name}</b><small>{account.id}</small></span>
-                  </label>
-                ))}
-              </div>
-            ) : <div className={styles.empty}>Одоогоор зарын аккаунт олдсонгүй.</div>}
+            <div className={styles.iconAlt}>✓</div>
+            <h2>2. Эрхийн шалгалт</h2>
+            <p>Холболтын дараа Page, Ad Account, Campaign, Post болон Insights мэдээллийг шууд Meta API-аас авна.</p>
+            <div className={styles.empty}>
+              {status?.configured ? `Graph API ${status.graphVersion} тохируулагдсан` : 'Meta Developer App тохируулаагүй байна.'}
+            </div>
           </section>
         </div>
 
         <section className={styles.info}>
-          <h3>Холбосны дараа юу хийх боломжтой вэ?</h3>
+          <h3>Шууд Meta API-аар юу удирдах вэ?</h3>
           <div className={styles.infoGrid}>
-            <div><b>Кампайн</b><span>Үүсгэх, идэвхжүүлэх, зогсоох, төсөв өөрчлөх</span></div>
-            <div><b>Зарын багц</b><span>Audience, budget, хугацаа, bid тохируулах</span></div>
-            <div><b>Зар</b><span>Шинэ зар үүсгэх, existing post boost хийх</span></div>
-            <div><b>Тайлан</b><span>Spend, clicks, CTR, CPC, CPA, ROAS хянах</span></div>
+            <div><b>Facebook Page</b><span>Хуудас болон existing post сонгох</span></div>
+            <div><b>Ad Account</b><span>Зарын аккаунт, валют, timezone сонгох</span></div>
+            <div><b>Кампайн / Зарын багц / Зар</b><span>PAUSED төлөвөөр үүсгээд хэрэглэгч баталсны дараа ACTIVE болгох</span></div>
+            <div><b>Тайлан</b><span>Spend, impressions, CTR, CPC, CPM, actions, ROAS</span></div>
           </div>
         </section>
       </div>
