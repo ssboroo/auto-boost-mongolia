@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
-import { WindsorModule } from './windsor/windsor.module'
+import { MetaModule } from './meta/meta.module'
 
 @Module({
-  imports: [WindsorModule],
+  imports: [MetaModule],
   controllers: [AppController],
 })
 export class AppModule {}
