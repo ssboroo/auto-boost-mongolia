@@ -64,12 +64,12 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search)
     const paymentIntent = params.get('payment_intent')
     if (params.get('payment') === 'success' && paymentIntent) {
-      setMessage('Wire төлбөрийг шалгаж байна…')
+      setMessage('QPay төлбөрийг шалгаж байна…')
       apiFetch<any>(`/billing/payment?payment_intent=${encodeURIComponent(paymentIntent)}`)
         .then((payment) => {
           setMessage(payment?.wire_status === 'succeeded'
             ? 'Үйлчилгээний шимтгэл амжилттай төлөгдлөө.'
-            : 'Төлбөр хүлээн авсан. Wire баталгаажуулалт түр хүлээгдэж байна.')
+            : 'Төлбөр хүлээн авсан. Баталгаажуулалт түр хүлээгдэж байна.')
         })
         .catch(() => undefined)
     }
@@ -89,10 +89,10 @@ export default function HomePage() {
         method: 'POST',
         body: JSON.stringify({ metaBudgetUsd: budgetUsd }),
       })
-      if (!result?.checkoutUrl) throw new Error('Wire checkout URL олдсонгүй.')
+      if (!result?.checkoutUrl) throw new Error('QPay төлбөрийн холбоос олдсонгүй.')
       window.location.assign(result.checkoutUrl)
     } catch (err: any) {
-      setError(err?.message || 'Wire төлбөр эхлүүлж чадсангүй.')
+      setError(err?.message || 'QPay төлбөр эхлүүлж чадсангүй.')
       setPaying(false)
     }
   }
@@ -223,23 +223,23 @@ export default function HomePage() {
         <section className={styles.paymentPanel} id="payment">
           <div className={styles.paymentIntro}>
             <h2>3. Төлбөрөө хийнэ үү</h2>
-            <p>Wire-аар аюулгүй төлбөр хийгээрэй.</p>
+            <p>QPay-аар аюулгүй төлбөр хийгээрэй.</p>
           </div>
           <button className={styles.wireButton} onClick={payFee} disabled={paying || !quote}>
-            <span className={styles.wireLogo}>W</span>
-            <span><b>{paying ? 'Wire checkout нээж байна…' : 'Wire-аар төлөх'}</b><small>Аюулгүй, хурдан, найдвартай</small></span>
+            <span className={styles.wireLogo}>Q</span>
+            <span><b>{paying ? 'QPay нээж байна…' : 'QPay-аар төлөх'}</b><small>Аюулгүй, хурдан, найдвартай</small></span>
             <strong>›</strong>
           </button>
           <div className={styles.trustRow} id="help">
             <div><span><LockKeyhole size={17} /></span><p><b>SSL шифрлэгдсэн</b><small>256-bit хамгаалалт</small></p></div>
-            <div><span><ShieldCheck size={17} /></span><p><b>PCI DSS стандарт</b><small>Төлбөрийн аюулгүй байдал</small></p></div>
+            <div><span><ShieldCheck size={17} /></span><p><b>Аюулгүй төлбөр</b><small>QPay төлбөрийн суваг</small></p></div>
             <div><span><Headphones size={17} /></span><p><b>24/7 дэмжлэг</b><small>Асуудал гарвал бидэнтэй холбогдоно уу</small></p></div>
           </div>
           {message && <div className={styles.success}>{message}</div>}
           {error && <div className={styles.error}>{error}</div>}
         </section>
 
-        <p className={styles.footerNote}>Үйлчилгээний шимтгэл Wire-аар төлөгдөнө. Meta зарын төсөв таны Meta Ad Account-ийн өөрийн payment method-оор Meta-д төлөгдөнө.</p>
+        <p className={styles.footerNote}>Үйлчилгээний шимтгэл QPay-аар төлөгдөнө. Meta зарын төсөв таны Meta Ad Account-ийн өөрийн payment method-оор Meta-д төлөгдөнө.</p>
         <p className={styles.rateFoot}>FX эх сурвалж: {quote?.fx.source === 'bank_of_mongolia' ? 'Монголбанк' : quote?.fx.source || '—'} · {quote?.fx.rateDate || '—'} · {rate ? rateLabel : ''}</p>
       </section>
     </main>
