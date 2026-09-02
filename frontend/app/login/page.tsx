@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ArrowRight, Check, LockKeyhole, Mail, ShieldCheck, Sparkles, UserPlus, WandSparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import styles from './page.module.css'
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     setLoading(true)
     setError('')
