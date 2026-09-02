@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req, Res, UnauthorizedException } from '@nestjs/common'
 import { randomBytes, timingSafeEqual } from 'crypto'
+import { MetaReadinessService } from './meta-readiness.service'
 import { MetaService } from './meta.service'
 import { TenantService } from './tenant.service'
 
@@ -10,6 +11,7 @@ export class MetaController {
   constructor(
     private readonly meta: MetaService,
     private readonly tenant: TenantService,
+    private readonly readiness: MetaReadinessService,
   ) {}
 
   private getCookie(req: any, name: string) {
@@ -20,22 +22,12 @@ export class MetaController {
 
   private cookieOptions(maxAge?: number) {
     const production = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL)
-    return {
-      httpOnly: true,
-      secure: production,
-      sameSite: 'lax' as const,
-      path: '/',
-      ...(maxAge ? { maxAge } : {}),
-    }
+    return { httpOnly: true, secure: production, sameSite: 'lax' as const, path: '/', ...(maxAge ? { maxAge } : {}) }
   }
 
   @Get('status')
   status() {
-    return {
-      ...this.meta.getStatus(),
-      tenantStorageConfigured: true,
-      authProvider: 'supabase',
-    }
+    return { ...this.meta.getStatus(), tenantStorageConfigured: true, authProvider: 'supabase' }
   }
 
   @Get('session')
@@ -46,10 +38,7 @@ export class MetaController {
       return {
         connected: true,
         workspaceId: context.workspaceId,
-        profile: {
-          id: connection.meta_user_id,
-          name: connection.meta_user_name,
-        },
+        profile: { id: connection.meta_user_id, name: connection.meta_user_name },
         tokenExpiresAt: connection.token_expires_at,
       }
     } catch (error) {
@@ -78,10 +67,7 @@ export class MetaController {
     @Query('error_description') errorDescription?: string,
   ) {
     const frontend = process.env.FRONTEND_ORIGIN || 'http://localhost:3000'
-
-    if (error) {
-      return res.redirect(`${frontend}/facebook?error=${encodeURIComponent(errorDescription || error)}`)
-    }
+    if (error) return res.redirect(`${frontend}/facebook?error=${encodeURIComponent(errorDescription || error)}`)
 
     const encryptedState = this.getCookie(req, this.stateCookie)
     let stored: any = null
@@ -90,9 +76,7 @@ export class MetaController {
     const expected = String(stored?.state || '')
     const actual = String(state || '')
     const fresh = Number(stored?.createdAt || 0) > Date.now() - 10 * 60 * 1000
-    const validState = Boolean(
-      fresh && expected && actual && expected.length === actual.length && timingSafeEqual(Buffer.from(expected), Buffer.from(actual)),
-    )
+    const validState = Boolean(fresh && expected && actual && expected.length === actual.length && timingSafeEqual(Buffer.from(expected), Buffer.from(actual)))
 
     if (!validState || !stored?.appToken || !stored?.userId) {
       res.clearCookie(this.stateCookie, this.cookieOptions())
@@ -102,11 +86,9 @@ export class MetaController {
     try {
       const user = await this.tenant.requireUserByToken(stored.appToken)
       if (user.id !== stored.userId) throw new UnauthorizedException('Хэрэглэгчийн session өөрчлөгдсөн байна.')
-
       const tokenResult = await this.meta.exchangeCode(code || '')
       const metaToken = tokenResult?.access_token
       if (!metaToken) throw new UnauthorizedException('Meta access token олдсонгүй.')
-
       const profile = await this.meta.getMe(metaToken)
       await this.tenant.saveConnection(stored.appToken, user, metaToken, profile, tokenResult?.expires_in)
       res.clearCookie(this.stateCookie, this.cookieOptions())
@@ -188,18 +170,31 @@ export class MetaController {
   @Post('objects/:objectId/status')
   async updateStatus(@Req() req: any, @Param('objectId') objectId: string, @Body() body: { status: 'ACTIVE' | 'PAUSED' }) {
     const { metaToken, context } = await this.tenant.requireMetaToken(req)
+
+    if (body.status === 'ACTIVE') {
+      try {
+        const account = await this.readiness.assertCanActivate(metaToken, objectId)
+        await this.tenant.writeAudit(context.appToken, context.workspaceId, context.user.id, 'meta.activation_guard.passed', 'meta_object', objectId, {
+          adAccountId: account.accountId,
+          accountStatus: account.accountStatusLabel,
+          billingState: account.billingState,
+        })
+      } catch (error: any) {
+        await this.tenant.writeAudit(context.appToken, context.workspaceId, context.user.id, 'meta.activation_guard.blocked', 'meta_object', objectId, {
+          reason: error?.response?.code || error?.response?.message || error?.message || 'BILLING_NOT_READY',
+          requestedStatus: 'ACTIVE',
+        })
+        throw error
+      }
+    }
+
     const result = await this.meta.updateStatus(objectId, metaToken, body.status)
     await this.tenant.writeAudit(context.appToken, context.workspaceId, context.user.id, 'meta.status.updated', 'meta_object', objectId, { status: body.status })
     return result
   }
 
   @Get('ad-accounts/:adAccountId/insights')
-  async insights(
-    @Req() req: any,
-    @Param('adAccountId') adAccountId: string,
-    @Query('date_preset') datePreset = 'last_7d',
-    @Query('level') level = 'campaign',
-  ) {
+  async insights(@Req() req: any, @Param('adAccountId') adAccountId: string, @Query('date_preset') datePreset = 'last_7d', @Query('level') level = 'campaign') {
     const { metaToken } = await this.tenant.requireMetaToken(req)
     return this.meta.getInsights(adAccountId, metaToken, datePreset, level)
   }
