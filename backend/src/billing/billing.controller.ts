@@ -27,6 +27,8 @@ export class BillingController {
 
   @Post('wire/webhook')
   wireWebhook(@Req() req: any, @Headers('wirepayment-signature') signature?: string) {
-    return this.billing.handleWireWebhook(req.rawBody || Buffer.from(''), signature || '')
+    const forwarded = String(req.headers?.['x-forwarded-for'] || '')
+    const clientIp = forwarded.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || ''
+    return this.billing.handleWireWebhook(req.rawBody || Buffer.from(''), signature || '', clientIp)
   }
 }
