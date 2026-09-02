@@ -12,10 +12,14 @@ type Status = {
   graphVersion: string
   redirectUri: string
   provider: string
+  tenantStorageConfigured?: boolean
+  authProvider?: string
 }
 
 type Session = {
   connected: boolean
+  workspaceId?: string
+  tokenExpiresAt?: string | null
   profile?: { id?: string; name?: string; picture?: { data?: { url?: string } } }
 }
 
@@ -69,7 +73,7 @@ export default function FacebookConnectionPage() {
       await apiFetch('/meta/logout', { method: 'POST' })
       setSession({ connected: false })
     } catch (err: any) {
-      setError(err?.message || 'Facebook session салгаж чадсангүй.')
+      setError(err?.message || 'Facebook холболтыг салгаж чадсангүй.')
     }
   }
 
@@ -90,7 +94,7 @@ export default function FacebookConnectionPage() {
             <span className={styles.kicker}>SECURE META CONNECTION</span>
             <h1>Facebook Ads-аа<br /><em>аюулгүй холбо.</em></h1>
             <p>Auto Boost Mongolia нь Windsor болон гуравдагч талын connector ашиглахгүй. Meta Graph / Marketing API-тай шууд OAuth холболт үүсгэнэ.</p>
-            <div className={styles.securityLine}><ShieldCheck size={17} /><span>Facebook нууц үгийг бид харахгүй · Access token нь HttpOnly шифрлэгдсэн session-д хадгалагдана</span></div>
+            <div className={styles.securityLine}><ShieldCheck size={17} /><span>Facebook нууц үгийг бид харахгүй · Meta access token нь таны workspace-д AES-256-GCM-р шифрлэгдэн хадгалагдаж, browser JavaScript-д буцаагдахгүй</span></div>
           </div>
           <div className={styles.connectionVisual}>
             <div className={styles.metaNode}><Facebook size={30} /><span>META</span></div>
@@ -104,7 +108,7 @@ export default function FacebookConnectionPage() {
         <section className={styles.statusGrid}>
           <StatusCard title="Backend API" value={loading ? 'Шалгаж байна' : error ? 'Алдаа' : 'Online'} ok={!loading && !error} />
           <StatusCard title="Meta App" value={loading ? 'Шалгаж байна' : status?.configured ? 'Configured' : 'Setup required'} ok={Boolean(status?.configured)} />
-          <StatusCard title="Secure session" value={loading ? 'Шалгаж байна' : status?.sessionConfigured ? 'Ready' : 'SESSION_SECRET дутуу'} ok={Boolean(status?.sessionConfigured)} />
+          <StatusCard title="Token vault" value={loading ? 'Шалгаж байна' : status?.sessionConfigured && status?.tenantStorageConfigured ? 'Encrypted · Ready' : 'Setup required'} ok={Boolean(status?.sessionConfigured && status?.tenantStorageConfigured)} />
           <StatusCard title="Facebook account" value={loading ? 'Шалгаж байна' : session.connected ? 'Connected' : 'Not connected'} ok={session.connected} />
         </section>
 
@@ -118,7 +122,7 @@ export default function FacebookConnectionPage() {
             {session.connected ? (
               <div className={styles.connectedBox}>
                 <div className={styles.profileCircle}>{session.profile?.name?.slice(0, 1).toUpperCase() || 'F'}</div>
-                <div><span>Холбогдсон аккаунт</span><b>{session.profile?.name || 'Facebook account'}</b><small>Session идэвхтэй · token browser JavaScript-д харагдахгүй</small></div>
+                <div><span>Холбогдсон аккаунт</span><b>{session.profile?.name || 'Facebook account'}</b><small>Workspace-д хамгаалагдсан · token browser JavaScript-д харагдахгүй</small></div>
                 <Check size={20} />
               </div>
             ) : (
@@ -136,7 +140,7 @@ export default function FacebookConnectionPage() {
               <div className={styles.setupHint}><b>Production тохиргоо дутуу байна</b><span>Backend Vercel environment дээр META_APP_ID, META_APP_SECRET, SESSION_SECRET, META_REDIRECT_URI-г бүрэн тохируулна уу.</span></div>
             )}
 
-            {session.connected && <button className={styles.disconnect} onClick={disconnectFacebook}>Facebook session салгах</button>}
+            {session.connected && <button className={styles.disconnect} onClick={disconnectFacebook}>Facebook холболтыг салгах</button>}
           </section>
 
           <section className={styles.card}>
@@ -147,11 +151,11 @@ export default function FacebookConnectionPage() {
             <div className={styles.checklist}>
               <CheckRow label="Backend API online" ok={!error && !loading} />
               <CheckRow label="Meta App ID + Secret" ok={Boolean(status?.configured)} />
-              <CheckRow label="Encrypted session secret" ok={Boolean(status?.sessionConfigured)} />
+              <CheckRow label="Encrypted tenant token vault" ok={Boolean(status?.sessionConfigured && status?.tenantStorageConfigured)} />
               <CheckRow label="HTTPS OAuth redirect" ok={Boolean(status?.redirectUri?.startsWith('https://'))} />
               <CheckRow label="Facebook user session" ok={session.connected} />
             </div>
-            <div className={styles.endpoint}><span>API endpoint</span><code>{API_BASE}</code></div>
+            <div className={styles.endpoint}><span>Browser API endpoint</span><code>{API_BASE}</code></div>
           </section>
         </div>
 
