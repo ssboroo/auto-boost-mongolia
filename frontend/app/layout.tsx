@@ -1,4 +1,5 @@
 import './globals.css'
+import './auth-loading.css'
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import AuthGate from '../components/AuthGate'
