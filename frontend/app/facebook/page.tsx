@@ -7,8 +7,12 @@ import { API_BASE, apiFetch } from '../../lib/api'
 
 type Status = { configured:boolean; sessionConfigured:boolean; productionReady:boolean; graphVersion:string; redirectUri:string; tenantStorageConfigured?:boolean }
 type Session = { connected:boolean; profile?:{name?:string} }
-type Account = { id:string; accountId:string; name:string; currency:string; timezoneName:string; accountStatus:number; accountStatusLabel:string; disableReason:number; billingState:'READY'|'MISSING'|'UNKNOWN'; ready:boolean }
-type Readiness = { connected:boolean; hasAdAccount:boolean; billingVisibility:boolean; ready:boolean; accounts:Account[]; setup:{createAdAccountUrl:string; adsManagerUrl:string; billingUrl:string}; note:string }
+type Account = {
+  id:string; accountId:string; name:string; currency:string; timezoneName:string; accountStatus:number; accountStatusLabel:string;
+  disableReason:number; billingState:'READY'|'MISSING'|'UNKNOWN'; paymentGuard:'READY'|'PAYMENT_FAILED'|'ACCOUNT_BLOCKED'|'PAYMENT_METHOD_MISSING'|'BILLING_CHECK_REQUIRED';
+  paymentFailed:boolean; ready:boolean; userMessage:string
+}
+type Readiness = { connected:boolean; hasAdAccount:boolean; billingVisibility:boolean; ready:boolean; paymentFailed:boolean; accounts:Account[]; setup:{createAdAccountUrl:string; adsManagerUrl:string; billingUrl:string}; note:string }
 
 export default function FacebookConnectionPage() {
   const [status,setStatus]=useState<Status|null>(null)
@@ -23,10 +27,8 @@ export default function FacebookConnectionPage() {
     try{
       const [s,ss]=await Promise.all([apiFetch<Status>('/meta/status'),apiFetch<Session>('/meta/session').catch(()=>({connected:false}))])
       setStatus(s); setSession(ss)
-      if(ss.connected){
-        const r=await apiFetch<Readiness>('/meta/readiness')
-        setReadiness(r)
-      }else setReadiness(null)
+      if(ss.connected){ setReadiness(await apiFetch<Readiness>('/meta/readiness')) }
+      else setReadiness(null)
     }catch(err:any){ setError(err?.message||`Backend API (${API_BASE})-тай холбогдож чадсангүй.`) }
     finally{ setLoading(false) }
   }
@@ -42,33 +44,40 @@ export default function FacebookConnectionPage() {
   async function disconnectFacebook(){ await apiFetch('/meta/logout',{method:'POST'}); setSession({connected:false}); setReadiness(null) }
 
   const appReady=Boolean(status?.productionReady)
-  const activeAccount=readiness?.accounts.find(a=>a.ready) || readiness?.accounts.find(a=>a.accountStatus===1) || readiness?.accounts[0]
+  const activeAccount=readiness?.accounts.find(a=>a.ready) || readiness?.accounts.find(a=>a.paymentFailed) || readiness?.accounts.find(a=>a.accountStatus===1) || readiness?.accounts[0]
+  const paymentFailed=Boolean(activeAccount?.paymentFailed)
 
   return <main className={styles.page}>
     <div className={styles.glowA}/><div className={styles.glowB}/>
     <div className={styles.wrap}>
       <header className={styles.topbar}>
         <a className={styles.back} href="/"><ArrowLeft size={17}/> Хяналтын самбар</a>
-        <div className={styles.apiPill}><i className={error?styles.redDot:styles.greenDot}/>{error?'API асуудалтай':'Meta Direct API · 2026.09'}</div>
+        <div className={styles.apiPill}><i className={error?styles.redDot:styles.greenDot}/>{error?'API асуудалтай':'Meta Direct API · Payment Guard'}</div>
       </header>
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <span className={styles.kicker}>META ADS READINESS</span>
           <h1>Facebook → Ad Account →<br/><em>Payment → Boost</em></h1>
-          <p>Систем Facebook холболтын дараа зарын аккаунт, account status болон Meta billing readiness-ийг дарааллаар шалгана. Бэлэн биш бол яг хийх setup алхмыг гаргана.</p>
-          <div className={styles.securityLine}><ShieldCheck size={17}/><span>Картын дугаар Auto Boost дээр хадгалагдахгүй. Meta зарын мөнгийг хэрэглэгч өөрийн Meta Ad Account payment method-оор Meta-д төлнө.</span></div>
+          <p>Систем boost эхлэхээс өмнө болон ACTIVE болгохын яг өмнө Meta billing readiness-ийг дахин шалгана. Төлбөрийн асуудалтай бол зар идэвхжихгүй.</p>
+          <div className={styles.securityLine}><ShieldCheck size={17}/><span>Картын үлдэгдэл Auto Boost-д харагдахгүй. Харин Meta account UNSETTLED / settlement issue төлөвт орвол Payment Failed Guard boost-ийг блоклоно.</span></div>
         </div>
         <div className={styles.connectionVisual}><div className={styles.metaNode}><Facebook size={30}/><span>META</span></div><div className={styles.connectionBeam}><i/></div><div className={styles.boostNode}><Zap size={28}/><span>AUTO BOOST</span></div></div>
       </section>
 
       {error&&<div className={styles.error}><Unplug size={18}/><div><b>Шалгалтын алдаа</b><p>{error}</p></div><button onClick={refresh}><RefreshCw size={15}/> Дахин шалгах</button></div>}
 
+      {paymentFailed&&readiness&&<div style={{margin:'18px 0',padding:18,borderRadius:18,border:'1px solid rgba(255,100,100,.35)',background:'rgba(255,70,70,.08)',display:'flex',gap:14,alignItems:'center',flexWrap:'wrap'}}>
+        <CreditCard size={24}/><div style={{flex:1,minWidth:240}}><b style={{display:'block',fontSize:16}}>Төлбөр амжилтгүй — Boost блоклогдсон</b><p style={{margin:'6px 0 0',fontSize:13,lineHeight:1.6,opacity:.8}}>{activeAccount?.userMessage}</p></div>
+        <a href={readiness.setup.billingUrl} target="_blank" rel="noreferrer" style={{fontWeight:850}}>Картаа цэнэглэх / Billing нээх ↗</a>
+        <button className={styles.primary} onClick={refresh} disabled={loading}><RefreshCw size={16}/>{loading?'Шалгаж байна…':'Дахин шалгах'}</button>
+      </div>}
+
       <section style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:12,margin:'18px 0'}}>
         <FlowStep n="01" title="Facebook" ok={session.connected} text={session.connected?'Холбогдсон':'OAuth холбоно'}/>
         <FlowStep n="02" title="Ad Account" ok={Boolean(readiness?.hasAdAccount)} text={readiness?.hasAdAccount?`${readiness.accounts.length} аккаунт`:'Шаардлагатай'}/>
-        <FlowStep n="03" title="Payment" ok={Boolean(activeAccount?.billingState==='READY')} text={activeAccount?.billingState==='READY'?'Бэлэн':activeAccount?.billingState==='UNKNOWN'?'Meta дээр шалгана':'Payment method алга'}/>
-        <FlowStep n="04" title="Boost" ok={Boolean(readiness?.ready)} text={readiness?.ready?'Бэлэн':'Хүлээгдэж байна'}/>
+        <FlowStep n="03" title="Payment" ok={Boolean(activeAccount?.paymentGuard==='READY')} text={paymentFailed?'PAYMENT FAILED':activeAccount?.paymentGuard==='READY'?'Бэлэн':activeAccount?.billingState==='UNKNOWN'?'Meta дээр шалгана':'Payment method шаардлагатай'}/>
+        <FlowStep n="04" title="Boost" ok={Boolean(readiness?.ready)} text={paymentFailed?'Блоклогдсон':readiness?.ready?'Бэлэн':'Хүлээгдэж байна'}/>
       </section>
 
       <div className={styles.contentGrid}>
@@ -81,22 +90,23 @@ export default function FacebookConnectionPage() {
         <section className={styles.card}>
           <div className={styles.cardTop}><div className={styles.checkIcon}><ShieldCheck size={22}/></div><div><span>STEP 02–04</span><h2>Ad Account readiness</h2></div></div>
           {!session.connected?<p className={styles.cardText}>Эхлээд Facebook холбоно уу.</p>:loading?<p className={styles.cardText}>Meta Ad Account шалгаж байна…</p>:!readiness?.hasAdAccount?<SetupBox icon={<WalletCards size={20}/>} title="Ad Account олдсонгүй" text="Meta Business Settings дээр шинэ Ad Account үүсгээд энэ хуудсанд буцаж ирж ‘Дахин шалгах’ дарна." href={readiness?.setup.createAdAccountUrl||'https://business.facebook.com/settings/ad-accounts'} button="Ad Account үүсгэх"/>:<>
-            <div style={{display:'grid',gap:10}}>{readiness.accounts.map(a=><div key={a.id} style={{border:'1px solid rgba(255,255,255,.1)',borderRadius:16,padding:14,background:'rgba(255,255,255,.035)'}}><div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><div><b style={{display:'block'}}>{a.name||`Ad Account ${a.accountId}`}</b><small style={{opacity:.65}}>{a.accountId} · {a.currency} · {a.timezoneName}</small></div><span style={{fontSize:11,fontWeight:800,color:a.ready?'#60d394':a.accountStatus===1?'#ffd166':'#ff7b7b'}}>{a.ready?'BOOST READY':a.accountStatusLabel}</span></div><div style={{marginTop:10,fontSize:12,opacity:.8}}>Payment: <b>{a.billingState==='READY'?'Бэлэн':a.billingState==='MISSING'?'Payment method шаардлагатай':'Meta Billing дээр баталгаажуулна'}</b></div></div>)}</div>
-            {activeAccount&&activeAccount.accountStatus!==1&&<SetupBox icon={<ShieldCheck size={20}/>} title={`Ad Account ${activeAccount.accountStatusLabel}`} text="Энэ Ad Account одоогоор ACTIVE биш байна. Ads Manager дээр account issue, restriction эсвэл outstanding balance-аа шийднэ үү." href={readiness.setup.adsManagerUrl} button="Ads Manager нээх"/>}
-            {activeAccount&&activeAccount.accountStatus===1&&activeAccount.billingState!=='READY'&&<SetupBox icon={<CreditCard size={20}/>} title="Payment method тохируулах" text={readiness.note} href={readiness.setup.billingUrl} button="Meta Billing нээх"/>}
-            {readiness.ready&&<div className={styles.connectedBox}><div className={styles.profileCircle}><Check size={18}/></div><div><span>Бүх шалгалт амжилттай</span><b>Boost хийхэд бэлэн</b><small>Campaign/Ad Set/Ad эхлээд PAUSED төлөвөөр үүснэ.</small></div><a href="/" style={{marginLeft:'auto',fontWeight:800}}>Boost →</a></div>}
+            <div style={{display:'grid',gap:10}}>{readiness.accounts.map(a=><div key={a.id} style={{border:`1px solid ${a.paymentFailed?'rgba(255,100,100,.35)':'rgba(255,255,255,.1)'}`,borderRadius:16,padding:14,background:a.paymentFailed?'rgba(255,70,70,.06)':'rgba(255,255,255,.035)'}}><div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><div><b style={{display:'block'}}>{a.name||`Ad Account ${a.accountId}`}</b><small style={{opacity:.65}}>{a.accountId} · {a.currency} · {a.timezoneName}</small></div><span style={{fontSize:11,fontWeight:800,color:a.ready?'#60d394':a.paymentFailed?'#ff7b7b':'#ffd166'}}>{a.ready?'BOOST READY':a.paymentFailed?'PAYMENT FAILED':a.accountStatusLabel}</span></div><div style={{marginTop:10,fontSize:12,opacity:.8}}>Payment: <b>{a.paymentFailed?'Төлбөрийн асуудалтай':a.billingState==='READY'?'Бэлэн':a.billingState==='MISSING'?'Payment method шаардлагатай':'Meta Billing дээр баталгаажуулна'}</b></div></div>)}</div>
+            {activeAccount&&activeAccount.paymentFailed&&<SetupBox icon={<CreditCard size={20}/>} title="Карт / төлбөрийн асуудлаа шийднэ үү" text={activeAccount.userMessage} href={readiness.setup.billingUrl} button="Meta Billing нээх"/>}
+            {activeAccount&&!activeAccount.paymentFailed&&activeAccount.accountStatus!==1&&<SetupBox icon={<ShieldCheck size={20}/>} title={`Ad Account ${activeAccount.accountStatusLabel}`} text="Энэ Ad Account одоогоор ACTIVE биш байна. Ads Manager дээр account issue, restriction эсвэл outstanding balance-аа шийднэ үү." href={readiness.setup.adsManagerUrl} button="Ads Manager нээх"/>}
+            {activeAccount&&!activeAccount.paymentFailed&&activeAccount.accountStatus===1&&activeAccount.billingState!=='READY'&&<SetupBox icon={<CreditCard size={20}/>} title="Payment method тохируулах" text={readiness.note} href={readiness.setup.billingUrl} button="Meta Billing нээх"/>}
+            {readiness.ready&&<div className={styles.connectedBox}><div className={styles.profileCircle}><Check size={18}/></div><div><span>Бүх шалгалт амжилттай</span><b>Boost хийхэд бэлэн</b><small>ACTIVE болгохын өмнө Payment Failed Guard дахин шалгана.</small></div><a href="/" style={{marginLeft:'auto',fontWeight:800}}>Boost →</a></div>}
           </>}
-          {session.connected&&<button className={styles.primary} onClick={refresh} disabled={loading}><RefreshCw size={16}/> {loading?'Шалгаж байна…':'Дахин шалгах'}</button>}
+          {session.connected&&!paymentFailed&&<button className={styles.primary} onClick={refresh} disabled={loading}><RefreshCw size={16}/> {loading?'Шалгаж байна…':'Дахин шалгах'}</button>}
         </section>
       </div>
 
       <section className={styles.capabilitySection}>
-        <div className={styles.capabilityHead}><span>2026.09 SETUP GUIDE</span><h3>Хэрэглэгчид юу харагдах вэ?</h3></div>
+        <div className={styles.capabilityHead}><span>PAYMENT FAILED GUARD</span><h3>Төлбөр хүрэлцэхгүй үед юу болох вэ?</h3></div>
         <div className={styles.capabilityGrid}>
-          <Capability num="01" title="Ad Account байхгүй" text="Meta Business Settings рүү шууд setup товч гарна."/>
-          <Capability num="02" title="Payment method байхгүй" text="Meta Billing & payments руу оруулж картаа Meta дээр холбоно."/>
-          <Capability num="03" title="Account disabled" text="Boost блоклогдоно; Ads Manager дээр account issue шийдэх заавар гарна."/>
-          <Capability num="04" title="Ready" text="Account ACTIVE + billing ready болсон үед л Boost үргэлжилнэ."/>
+          <Capability num="01" title="Meta billing issue" text="UNSETTLED / settlement issue илэрвэл payment failed гэж тэмдэглэнэ."/>
+          <Capability num="02" title="Boost блок" text="Campaign/Ad-г ACTIVE болгохын өмнө backend дахин readiness шалгана."/>
+          <Capability num="03" title="Картаа цэнэглэх" text="Хэрэглэгч Meta Billing дээр картаа цэнэглэж эсвэл outstanding balance-аа шийднэ."/>
+          <Capability num="04" title="Дахин шалгах" text="Meta ACTIVE + billing ready болсны дараа л Boost дахин зөвшөөрөгдөнө."/>
         </div>
       </section>
     </div>
