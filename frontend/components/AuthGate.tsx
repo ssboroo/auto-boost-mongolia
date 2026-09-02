@@ -12,7 +12,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const isPublic = pathname === '/login'
+  const isLogin = pathname === '/login'
+  const isPublic = isLogin || ['/privacy', '/terms', '/data-deletion'].includes(pathname)
 
   useEffect(() => {
     let active = true
@@ -22,7 +23,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setUser(nextUser)
       setLoading(false)
       if (!nextUser && !isPublic) router.replace('/login')
-      if (nextUser && isPublic) router.replace('/')
+      if (nextUser && isLogin) router.replace('/')
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -30,14 +31,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setUser(nextUser)
       setLoading(false)
       if (!nextUser && !isPublic) router.replace('/login')
-      if (nextUser && isPublic) router.replace('/')
+      if (nextUser && isLogin) router.replace('/')
     })
 
     return () => {
       active = false
       listener.subscription.unsubscribe()
     }
-  }, [isPublic, router])
+  }, [isLogin, isPublic, router])
 
   async function signOut() {
     setMenuOpen(false)
