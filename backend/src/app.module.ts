@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { MetaModule } from './meta/meta.module'
+import { BillingModule } from './billing/billing.module'
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MetaModule } from './meta/meta.module'
       },
     ]),
     MetaModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [
