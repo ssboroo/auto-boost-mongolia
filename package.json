@@ -1,0 +1,11 @@
+{
+  "name": "auto-boost-mongolia",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix frontend run dev\" \"npm --prefix backend run start:dev\"",
+    "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
