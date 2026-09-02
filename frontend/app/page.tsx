@@ -9,19 +9,26 @@ export default function HomePage() {
   const [tab, setTab] = useState(0)
   const [budget, setBudget] = useState(30000)
   const [days, setDays] = useState(7)
+  const [gender, setGender] = useState('Бүгд')
+  const [placementMode, setPlacementMode] = useState('Advantage+')
+  const [creativeMode, setCreativeMode] = useState('Одоо байгаа пост')
+  const [aiApplied, setAiApplied] = useState(false)
   const total = useMemo(() => budget * days, [budget, days])
+  const score = aiApplied ? 97 : 92
+
+  const goTo = (index: number) => setTab(Math.max(0, Math.min(tabs.length - 1, index)))
 
   return (
     <main className="shell">
       <aside className="sidebar">
         <div className="brand"><div className="brandMark">AB</div><div><b>AUTO BOOST</b><span>MONGOLIA</span></div></div>
         <nav>
-          <a className="active"><LayoutDashboard size={18}/>Хяналтын самбар</a>
-          <a><Megaphone size={18}/>Кампайн</a>
-          <a><BarChart3 size={18}/>Тайлан</a>
-          <a><Bot size={18}/>AI зөвлөмж</a>
-          <a><Facebook size={18}/>Facebook холболт</a>
-          <a><Settings size={18}/>Тохиргоо</a>
+          <a className="active" href="#workspace"><LayoutDashboard size={18}/>Хяналтын самбар</a>
+          <a href="#workspace" onClick={() => goTo(0)}><Megaphone size={18}/>Кампайн</a>
+          <a href="#insights"><BarChart3 size={18}/>Тайлан</a>
+          <a href="#ai"><Bot size={18}/>AI зөвлөмж</a>
+          <a href="/facebook"><Facebook size={18}/>Facebook холболт</a>
+          <a href="#settings"><Settings size={18}/>Тохиргоо</a>
         </nav>
         <div className="sidebarCard"><Sparkles size={18}/><div><b>AI туслах</b><p>Таны тохиргоог бодит цагт шалгана.</p></div></div>
       </aside>
@@ -29,14 +36,14 @@ export default function HomePage() {
       <section className="content">
         <header className="topbar">
           <div><p className="eyebrow">МЭРГЭЖЛИЙН ГОРИМ</p><h1>Шинэ зар үүсгэх</h1><p>Meta Ads Manager-ийн нарийн тохиргоог Монгол хэлээр.</p></div>
-          <button className="connect"><Facebook size={18}/> Facebook холбоотой</button>
+          <a className="connect" href="/facebook"><Facebook size={18}/> Facebook холболт</a>
         </header>
 
-        <div className="stepper">
-          {tabs.map((label, index) => <button key={label} className={index === tab ? 'step activeStep' : 'step'} onClick={() => setTab(index)}><span>{index + 1}</span>{label}</button>)}
+        <div className="stepper" aria-label="Зар үүсгэх алхмууд">
+          {tabs.map((label, index) => <button key={label} className={index === tab ? 'step activeStep' : 'step'} onClick={() => goTo(index)}><span>{index + 1}</span>{label}</button>)}
         </div>
 
-        <div className="workspace">
+        <div className="workspace" id="workspace">
           <div className="formCard">
             {tab === 0 && <>
               <Section icon={<Target size={20}/>} title="Кампайны үндсэн тохиргоо" text="Зарын зорилго болон төсвийн стратегиа сонгоно уу." />
@@ -55,15 +62,15 @@ export default function HomePage() {
               <Section icon={<Users size={20}/>} title="Зорилтот хүмүүс" text="Хэн таны зарыг харахыг нарийвчлан тохируулна." />
               <div className="grid2"><Field label="Байршил"><input defaultValue="Улаанбаатар, Монгол" /></Field><Field label="Radius"><select><option>+25 км</option><option>+40 км</option><option>+80 км</option></select></Field></div>
               <div className="grid2"><Field label="Доод нас"><input type="number" defaultValue={23}/></Field><Field label="Дээд нас"><input type="number" defaultValue={45}/></Field></div>
-              <Field label="Хүйс"><div className="chips"><button className="selected">Бүгд</button><button>Эрэгтэй</button><button>Эмэгтэй</button></div></Field>
+              <Field label="Хүйс"><div className="chips">{['Бүгд','Эрэгтэй','Эмэгтэй'].map(x => <button key={x} type="button" className={gender === x ? 'selected' : ''} onClick={() => setGender(x)}>{x}</button>)}</div></Field>
               <Field label="Сонирхол ба зан төлөв" hint="Meta-ийн detailed targeting-тэй дүйцэх тохиргоо."><input placeholder="Жишээ: Онлайн худалдаа, Технологи, Бизнес" /></Field>
-              <Field label="Зар харагдах байршил"><div className="chips"><button className="selected">Advantage+</button><button>Гараар сонгох</button></div></Field>
+              <Field label="Зар харагдах байршил"><div className="chips">{['Advantage+','Гараар сонгох'].map(x => <button key={x} type="button" className={placementMode === x ? 'selected' : ''} onClick={() => setPlacementMode(x)}>{x}</button>)}</div></Field>
               <div className="placementGrid">{['Facebook Feed','Instagram Feed','Facebook Story','Instagram Story','Facebook Reels','Instagram Reels','Messenger'].map(x => <label key={x}><input type="checkbox" defaultChecked/> {x}</label>)}</div>
             </>}
 
             {tab === 2 && <>
               <Section icon={<Megaphone size={20}/>} title="Зар ба бүтээлч материал" text="Одоо байгаа пост ашиглах эсвэл шинэ зар үүсгэнэ." />
-              <Field label="Зарын төрөл"><div className="chips"><button className="selected">Одоо байгаа пост</button><button>Шинэ зар</button></div></Field>
+              <Field label="Зарын төрөл"><div className="chips">{['Одоо байгаа пост','Шинэ зар'].map(x => <button key={x} type="button" className={creativeMode === x ? 'selected' : ''} onClick={() => setCreativeMode(x)}>{x}</button>)}</div></Field>
               <Field label="Facebook пост"><select><option>Google AI Pro — 1 жилийн эрх...</option><option>Шинэ үйлчилгээний танилцуулга...</option></select></Field>
               <Field label="Үндсэн текст"><textarea rows={5} defaultValue="AI ашиглан ажлаа хурдасгаж, бизнесийн контентоо илүү хурдан бүтээгээрэй." /></Field>
               <div className="grid2"><Field label="Гарчиг"><input defaultValue="Google AI Pro"/></Field><Field label="Үйлдлийн товч"><select><option>Мессеж илгээх</option><option>Дэлгэрэнгүй</option><option>Худалдан авах</option></select></Field></div>
@@ -72,17 +79,17 @@ export default function HomePage() {
 
             {tab >= 3 && <>
               <Section icon={<Bot size={20}/>} title={tab === 3 ? 'AI шалгалт' : 'Урьдчилан харах'} text={tab === 3 ? 'Нийтлэхийн өмнө төсөв, audience, placement, creative-ийг шалгана.' : 'Зар Facebook болон Instagram дээр хэрхэн харагдахыг шалгана.'} />
-              {tab === 3 ? <div className="audit"><Audit ok text="Төсвийн хэмжээ хэвийн байна"/><Audit ok text="Зорилтот бүлгийн хэмжээ хангалттай"/><Audit ok text="Facebook болон Instagram placement идэвхтэй"/><Audit text="Instagram Reels-д 9:16 creative нэмбэл илүү сайн"/></div> : <div className="preview"><div className="previewTop"><div className="avatar">AB</div><div><b>Auto Boost Mongolia</b><span>Sponsored · 🌐</span></div></div><p>AI ашиглан ажлаа хурдасгаж, бизнесийн контентоо илүү хурдан бүтээгээрэй.</p><div className="creative">Таны зарын зураг / видео</div><div className="previewCta"><div><small>ТАНИЛЦУУЛГА</small><b>Google AI Pro</b></div><button>Мессеж илгээх</button></div></div>}
+              {tab === 3 ? <div className="audit"><Audit ok text="Төсвийн хэмжээ хэвийн байна"/><Audit ok text="Зорилтот бүлгийн хэмжээ хангалттай"/><Audit ok text="Facebook болон Instagram placement идэвхтэй"/><Audit ok={aiApplied} text={aiApplied ? '9:16 creative recommendation хэрэглэгдсэн' : 'Instagram Reels-д 9:16 creative нэмбэл илүү сайн'}/></div> : <div className="preview"><div className="previewTop"><div className="avatar">AB</div><div><b>Auto Boost Mongolia</b><span>Sponsored · 🌐</span></div></div><p>AI ашиглан ажлаа хурдасгаж, бизнесийн контентоо илүү хурдан бүтээгээрэй.</p><div className="creative">Таны зарын зураг / видео</div><div className="previewCta"><div><small>ТАНИЛЦУУЛГА</small><b>Google AI Pro</b></div><button>Мессеж илгээх</button></div></div>}
             </>}
 
-            <div className="actions"><button className="secondary" disabled={tab === 0} onClick={() => setTab(Math.max(0, tab - 1))}>Өмнөх</button><button className="primary" onClick={() => setTab(Math.min(tabs.length - 1, tab + 1))}>{tab === tabs.length - 1 ? 'Зар үүсгэх' : 'Үргэлжлүүлэх'} <ChevronRight size={18}/></button></div>
+            <div className="actions"><button className="secondary" disabled={tab === 0} onClick={() => goTo(tab - 1)}>Өмнөх</button><button className="primary" onClick={() => tab === tabs.length - 1 ? alert('Зарын draft бэлтгэгдлээ. Meta API холболтын дараа PAUSED төлөвөөр үүсгэнэ.') : goTo(tab + 1)}>{tab === tabs.length - 1 ? 'Зар бэлтгэх' : 'Үргэлжлүүлэх'} <ChevronRight size={18}/></button></div>
           </div>
 
-          <aside className="aiPanel">
+          <aside className="aiPanel" id="ai">
             <div className="aiTitle"><div className="aiIcon"><Sparkles size={18}/></div><div><b>AI туслах</b><span>Бодит цагийн зөвлөмж</span></div></div>
-            <div className="score"><span>Тохиргооны үнэлгээ</span><b>92/100</b><div className="bar"><i /></div></div>
+            <div className="score"><span>Тохиргооны үнэлгээ</span><b>{score}/100</b><div className="bar"><i style={{width:`${score}%`}} /></div></div>
             <div className="tip good"><b>Сайн тохиргоо</b><p>23–45 насны хүрээ болон Улаанбаатарын байршил таны зорилгод нийцэж байна.</p></div>
-            <div className="tip"><b>Сайжруулах санал</b><p>Reels-д зориулсан 9:16 creative нэмбэл placement coverage нэмэгдэнэ.</p><button>Саналыг хэрэглэх</button></div>
+            <div className="tip"><b>Сайжруулах санал</b><p>{aiApplied ? 'Reels placement-д зориулсан creative зөвлөмж хэрэглэгдсэн.' : 'Reels-д зориулсан 9:16 creative нэмбэл placement coverage нэмэгдэнэ.'}</p><button type="button" onClick={() => setAiApplied(true)} disabled={aiApplied}>{aiApplied ? 'Хэрэглэсэн' : 'Саналыг хэрэглэх'}</button></div>
             <div className="cost"><CircleDollarSign size={20}/><div><span>Нийт дээд төсөв</span><b>{total.toLocaleString()}₮</b></div></div>
           </aside>
         </div>
