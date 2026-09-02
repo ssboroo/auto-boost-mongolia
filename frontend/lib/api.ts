@@ -1,9 +1,12 @@
+import { supabase } from './supabase'
+
 export const API_BASE =
   process.env.NODE_ENV === 'production'
     ? '/api'
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession()
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: 'include',
@@ -11,6 +14,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     headers: {
       Accept: 'application/json',
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(session?.access_token ? { 'x-app-access-token': session.access_token } : {}),
       ...(init.headers || {}),
     },
   })
