@@ -17,6 +17,7 @@ export class BillingService {
   private readonly supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || ''
   private readonly serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   private readonly wireBase = 'https://api.wire.mn/v1'
+  private readonly wireWebhookIp = process.env.WIRE_WEBHOOK_IP || '65.109.117.186'
   private fxCache: { value: FxQuote; expiresAt: number } | null = null
 
   constructor(private readonly tenant: TenantService) {}
@@ -131,7 +132,13 @@ export class BillingService {
       service_fee_mnt: pricing.serviceFeeMnt, meta_budget_usd: pricing.metaBudgetUsd, fx_rate: pricing.fx.rate,
     })
 
-    return { ...pricing, paymentIntentId: intent.id, checkoutSessionId: checkout.id || null, checkoutUrl: checkout.url }
+    return {
+      ...pricing,
+      paymentIntentId: intent.id,
+      checkoutSessionId: checkout.id || null,
+      checkoutUrl: checkout.url,
+      fallbackPaymentLink: process.env.WIRE_FALLBACK_PAYMENT_LINK || null,
+    }
   }
 
   async getPayment(req: any, paymentIntentId: string) {
@@ -141,7 +148,12 @@ export class BillingService {
     return rows?.[0] || null
   }
 
-  async handleWireWebhook(rawBody: Buffer, signature: string) {
+  async handleWireWebhook(rawBody: Buffer, signature: string, clientIp: string) {
+    const normalizedIp = String(clientIp || '').replace(/^::ffff:/, '')
+    if (normalizedIp !== this.wireWebhookIp) {
+      throw new UnauthorizedException('Wire webhook source IP зөвшөөрөгдөөгүй байна.')
+    }
+
     const secret = process.env.WIRE_WEBHOOK_SECRET || ''
     if (!secret) throw new UnauthorizedException('WIRE_WEBHOOK_SECRET тохируулаагүй байна.')
     if (!rawBody?.length || !signature) throw new UnauthorizedException('Wire webhook signature байхгүй байна.')
@@ -149,27 +161,49 @@ export class BillingService {
     const parts = Object.fromEntries(signature.split(',').map((part) => part.trim().split('=')))
     const timestamp = Number(parts.t)
     const supplied = String(parts.v1 || '')
-    if (!timestamp || !supplied || Math.abs(Date.now() / 1000 - timestamp) > 300) throw new UnauthorizedException('Wire webhook хугацаа/гарын үсэг хүчингүй.')
+    const ageSeconds = Math.abs(Date.now() / 1000 - timestamp)
+    if (!timestamp || !supplied || ageSeconds >= 300) {
+      throw new UnauthorizedException('Wire webhook хугацаа/гарын үсэг хүчингүй.')
+    }
 
     const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody.toString('utf8')}`).digest('hex')
     const a = Buffer.from(expected, 'hex')
     const b = Buffer.from(supplied, 'hex')
-    if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Wire webhook гарын үсэг таарахгүй байна.')
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw new UnauthorizedException('Wire webhook гарын үсэг таарахгүй байна.')
+    }
 
-    const event: any = JSON.parse(rawBody.toString('utf8'))
+    let event: any
+    try {
+      event = JSON.parse(rawBody.toString('utf8'))
+    } catch {
+      throw new BadRequestException('Wire webhook JSON буруу байна.')
+    }
+
     const eventId = event?.id
     const eventType = event?.type
+    if (!eventType) return { ok: true, ignored: true }
+
+    if (eventType === 'endpoint.verification') {
+      return { ok: true, verified: true }
+    }
+
     const object = event?.data?.object || event?.data || {}
     const paymentIntentId = object?.id || object?.payment_intent || event?.payment_intent
-    if (!eventId || !eventType) return { ok: true, ignored: true }
 
     if (eventType === 'payment_intent.succeeded' && paymentIntentId) {
       await this.serviceRest(`/rest/v1/service_fee_payments?wire_payment_intent_id=eq.${encodeURIComponent(paymentIntentId)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ wire_status: 'succeeded', wire_event_id: eventId, paid_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({
+          wire_status: 'succeeded',
+          wire_event_id: eventId || null,
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }),
       })
     }
+
     return { ok: true }
   }
 
