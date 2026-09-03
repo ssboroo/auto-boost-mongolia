@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CircleDollarSign, CreditCard, Facebook, Gauge, ShieldCheck, WalletCards } from 'lucide-react'
+import { BarChart3, CircleDollarSign, CreditCard, Facebook, Gauge, Layers3, PlusCircle, ShieldCheck, WalletCards } from 'lucide-react'
 import AppShell from '../components/layout/AppShell'
 import DashboardHero from '../components/dashboard/DashboardHero'
 import StatCard from '../components/dashboard/StatCard'
@@ -23,32 +23,34 @@ export default function HomePage(){
  const rateLabel=quote?`1 USD = ${quote.fx.rate.toLocaleString('mn-MN')}₮`:'Ханш ачаалж байна…'
  return <AppShell>
    <DashboardHero connected={session.connected}/>
-   <section className={styles.kpis} id="analytics">
+   <section className={styles.kpis}>
      <StatCard icon={<Facebook size={22}/>} value={session.connected?'Холбогдсон':'Холбоогүй'} label="Facebook" trend={session.connected?'Meta OAuth бэлэн':'Setup шаардлагатай'}/>
      <StatCard icon={<WalletCards size={22}/>} value={`$${budgetUsd.toFixed(0)}`} label="Meta зарын төсөв" trend={quote?money(quote.adBudgetMnt):'Тооцож байна'}/>
      <StatCard icon={<CircleDollarSign size={22}/>} value={quote?money(quote.serviceFeeMnt):'—'} label="RAINY шимтгэл" trend={`${quote?.serviceFeePercent??10}% үйлчилгээ`}/>
      <StatCard icon={<Gauge size={22}/>} value={quote?money(quote.totalDisplayMnt):'—'} label="Нийт үнэлгээ" trend={rateLabel}/>
    </section>
 
-   <section className={styles.workGrid} id="boost">
+   <section className={styles.workGrid}>
     <article className={styles.boostCard}>
-      <div className={styles.sectionHead}><div><span>BOOST STUDIO</span><h2>Meta зарын төсөв тохируулах</h2></div><div className={styles.live}><i/> LIVE FX</div></div>
+      <div className={styles.sectionHead}><div><span>QUICK BUDGET</span><h2>Meta төсөв + RAINY шимтгэл</h2></div><div className={styles.live}><i/> LIVE FX</div></div>
       <div className={styles.budgetGrid}>
        <label className={styles.amount}><span>$</span><input type="number" min="1" value={budgetUsd} onChange={e=>setBudgetUsd(Math.max(1,Number(e.target.value)||1))}/><em>USD</em></label>
        <div className={styles.presets}>{presets.map(v=><button key={v} onClick={()=>setBudgetUsd(v)} className={budgetUsd===v?styles.selected:''}>${v}</button>)}</div>
       </div>
       <div className={styles.summary}><div><small>Meta төсөв</small><b>{quote?money(quote.adBudgetMnt):'—'}</b></div><div><small>RAINY шимтгэл</small><b>{quote?money(quote.serviceFeeMnt):'—'}</b></div><div><small>Нийт үнэлгээ</small><b>{quote?money(quote.totalDisplayMnt):'—'}</b></div></div>
-      <div className={styles.payment} id="payment"><div><ShieldCheck size={20}/><p><b>Аюулгүй төлбөр</b><small>Meta зарын төсөв Meta дээр, RAINY шимтгэл QPay-аар төлөгдөнө.</small></p></div><button onClick={payFee} disabled={paying||!quote}>{paying?'QPay нээж байна…':'QPay-аар шимтгэл төлөх'} →</button></div>
+      <div className={styles.payment}><div><ShieldCheck size={20}/><p><b>Аюулгүй төлбөр</b><small>Meta зарын төсөв Meta дээр, RAINY шимтгэл QPay-аар төлөгдөнө.</small></p></div><button onClick={payFee} disabled={paying||!quote}>{paying?'QPay нээж байна…':'QPay-аар шимтгэл төлөх'} →</button></div>
       {message&&<div className={styles.success}>{message}</div>}{error&&<div className={styles.error}>{error}<button onClick={()=>refreshQuote()}>Дахин оролдох</button></div>}
     </article>
-    <aside className={styles.insight}><div className={styles.insightIcon}>↗</div><h3>Өдөр бүр бага зэрэг оновчлол,<br/>маргааш том өсөлт.</h3><p>RAINY таны зарын workflow-г ойлгомжтой, аюулгүй удирдана.</p><a href="/facebook">Facebook readiness →</a></aside>
+    <aside className={styles.insight}><div className={styles.insightIcon}>↗</div><h3>RAINY Ads Manager</h3><p>Page → Post → Objective → Audience → Budget → Schedule → PAUSED Ad гэсэн бүрэн workflow.</p><a href="/boost/create">Boost wizard нээх →</a></aside>
    </section>
 
-   <section className={styles.campaigns} id="campaigns"><div className={styles.sectionHead}><div><span>WORKFLOW STATUS</span><h2>Сүүлийн кампанит ажлын бэлэн байдал</h2></div><a href="/facebook">Бүгдийг шалгах</a></div><div className={styles.tableWrap}><table><thead><tr><th>Алхам</th><th>Төлөв</th><th>Дэлгэрэнгүй</th><th>Үйлдэл</th></tr></thead><tbody>
-     <StatusRow icon={<Facebook size={16}/>} title="Facebook холболт" good={session.connected} status={session.connected?'Бэлэн':'Шаардлагатай'} detail={session.connected?'Meta OAuth холбогдсон':'Facebook account холбоно'} href="/facebook"/>
-     <StatusRow icon={<CreditCard size={16}/>} title="Meta зарын төсөв" good status="Тохируулсан" detail={`$${budgetUsd.toFixed(2)} · ${quote?money(quote.adBudgetMnt):'—'}`} href="#boost"/>
-     <StatusRow icon={<CircleDollarSign size={16}/>} title="RAINY шимтгэл" good={Boolean(quote)} status={quote?'Тооцоолсон':'Хүлээгдэж байна'} detail={quote?`${quote.serviceFeePercent}% · ${money(quote.serviceFeeMnt)}`:'Quote ачаалж байна'} href="#payment"/>
-     <StatusRow icon={<ShieldCheck size={16}/>} title="Pre-Launch System Check" good status="Админ шалгалт" detail="Meta, Supabase, webhook, FX, production URL" href="/admin"/>
+   <section className={styles.campaigns}><div className={styles.sectionHead}><div><span>ADS MANAGER</span><h2>Үндсэн удирдлага</h2></div><a href="/campaigns">Кампанит ажлууд →</a></div><div className={styles.tableWrap}><table><thead><tr><th>Хэсэг</th><th>Төлөв</th><th>Дэлгэрэнгүй</th><th>Үйлдэл</th></tr></thead><tbody>
+     <StatusRow icon={<PlusCircle size={16}/>} title="Boost үүсгэх" good={session.connected} status={session.connected?'Бэлэн':'Facebook шаардлагатай'} detail="Post, objective, audience, placement, budget, хугацаа" href="/boost/create"/>
+     <StatusRow icon={<Layers3 size={16}/>} title="Кампанит ажил" good={session.connected} status={session.connected?'Live Meta data':'Холболт шаардлагатай'} detail="Campaign list, pause, activate, Payment Guard" href="/campaigns"/>
+     <StatusRow icon={<BarChart3 size={16}/>} title="Аналитик" good={session.connected} status={session.connected?'Live Insights':'Холболт шаардлагатай'} detail="Spend, reach, clicks, CTR, CPC, purchase, ROAS" href="/analytics"/>
+     <StatusRow icon={<Facebook size={16}/>} title="Facebook readiness" good={session.connected} status={session.connected?'Холбогдсон':'Шаардлагатай'} detail="Ad Account, payment method, Payment Failed Guard" href="/facebook"/>
+     <StatusRow icon={<CreditCard size={16}/>} title="Төлбөр" good={Boolean(quote)} status={quote?'Бэлэн':'Хүлээгдэж байна'} detail="RAINY fee checkout, receipt, transaction history" href="/payments"/>
+     <StatusRow icon={<ShieldCheck size={16}/>} title="Production Check" good status="Admin" detail="Meta, Supabase, webhook, FX, production URL" href="/admin"/>
    </tbody></table></div></section>
 
    <footer className={styles.footer}>RAINY · Технологийн Хязгааргүй Боломж · <a href="/privacy">Нууцлал</a> · <a href="/terms">Нөхцөл</a> · <a href="/data-deletion">Мэдээлэл устгах</a></footer>
