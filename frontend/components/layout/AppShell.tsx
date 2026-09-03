@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Bell, CirclePlus, CreditCard, Facebook, Home, Layers3, Menu, ReceiptText, Search, Settings, ShieldCheck, X } from 'lucide-react'
+import { BarChart3, Bell, CirclePlus, CreditCard, Facebook, Home, Layers3, LogOut, Menu, ReceiptText, Search, Settings, ShieldCheck, X } from 'lucide-react'
 import { useState } from 'react'
+import { supabase } from '../../lib/supabase'
 import styles from './app-shell.module.css'
 
 const nav = [
@@ -20,6 +21,7 @@ const nav = [
 export default function AppShell({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  async function signOut(){ await supabase.auth.signOut(); window.location.assign('/login') }
   return <div className={styles.shell}>
     <aside className={`${styles.sidebar} ${open ? styles.open : ''}`}>
       <div className={styles.logo}><b>RAINY</b><small>Технологийн Хязгааргүй Боломж</small></div>
@@ -35,7 +37,7 @@ export default function AppShell({ children, title, subtitle }: { children: Reac
       <header className={styles.header}>
         <button className={styles.menu} aria-label="Цэс" onClick={()=>setOpen(v=>!v)}>{open?<X size={20}/>:<Menu size={20}/>}</button>
         <label className={styles.search}><Search size={17}/><input placeholder="Кампанит ажил, тайлан, тохиргоо хайх..." aria-label="Хайх"/></label>
-        <div className={styles.user}><button aria-label="Мэдэгдэл"><Bell size={18}/><i/></button><span>U</span><b>Хэрэглэгч</b></div>
+        <div className={styles.user}><button aria-label="Мэдэгдэл"><Bell size={18}/><i/></button><span>U</span><b>Хэрэглэгч</b><button className={styles.logout} aria-label="Гарах" title="Гарах" onClick={signOut}><LogOut size={16}/></button></div>
       </header>
       <main className={styles.content}>
         {(title || subtitle) && <div className={styles.pageHead}><div><h1>{title}</h1>{subtitle&&<p>{subtitle}</p>}</div><div className={styles.secure}><ShieldCheck size={16}/> RAINY Secure</div></div>}
