@@ -14,7 +14,7 @@ export default function CampaignsPage(){
  const [filter,setFilter]=useState('ALL'),[query,setQuery]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState('')
  async function loadAccounts(){try{const r=await apiFetch<any>('/meta/ad-accounts');const data=r?.data||[];setAccounts(data);const id=data[0]?.account_id||data[0]?.id||'';setAccountId(x=>x||id)}catch(e:any){setError(e?.message||'Ad Account авч чадсангүй.');setLoading(false)}}
  async function loadCampaigns(id=accountId){if(!id)return;setLoading(true);setError('');try{const r=await apiFetch<any>(`/meta/ad-accounts/${encodeURIComponent(id)}/campaigns`);setRows(r?.data||[])}catch(e:any){setError(e?.message||'Кампанит ажлууд ачаалж чадсангүй.')}finally{setLoading(false)}}
- useEffect(()=>{loadAccounts()},[]);useEffect(()=>{if(accountId)loadCampaigns(accountId)},[accountId])
+ useEffect(()=>{setQuery(new URLSearchParams(window.location.search).get('q')||'');loadAccounts()},[]);useEffect(()=>{if(accountId)loadCampaigns(accountId)},[accountId])
  async function setStatus(c:Campaign,status:'ACTIVE'|'PAUSED'){setBusy(c.id);setError('');try{await apiFetch(`/meta/objects/${encodeURIComponent(c.id)}/status`,{method:'POST',body:JSON.stringify({status})});await loadCampaigns()}catch(e:any){setError(e?.message||`${status} болгож чадсангүй.`)}finally{setBusy('')}}
  const visible=useMemo(()=>rows.filter(c=>(filter==='ALL'||c.effective_status===filter||c.status===filter)&&(!query||c.name.toLowerCase().includes(query.toLowerCase()))),[rows,filter,query])
  const status=(v:string)=>['ACTIVE'].includes(v)?`${styles.badge} ${styles.good}`:['PAUSED','CAMPAIGN_PAUSED'].includes(v)?`${styles.badge} ${styles.warn}`:`${styles.badge} ${styles.neutral}`
