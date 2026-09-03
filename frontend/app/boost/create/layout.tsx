@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react'
 import BoostReadableEnhancer from './BoostReadableEnhancer'
+import BudgetVisibilityEnhancer from './BudgetVisibilityEnhancer'
 import './boost-readable.css'
+import './budget-visible.css'
 
 export default function BoostCreateLayout({children}:{children:ReactNode}){
   return <div className="boostReadableScope" data-boost-readable>
     <BoostReadableEnhancer/>
+    <BudgetVisibilityEnhancer/>
     <div className="boostIntroCard">
       <div>
         <span>RAINY · META ADS</span>
@@ -14,6 +17,7 @@ export default function BoostCreateLayout({children}:{children:ReactNode}){
       <div className="boostIntroSteps">
         <b>1</b><span>Зорилго</span><i>→</i><b>2</b><span>Зарын контент</span><i>→</i><b>3</b><span>Аудитори</span><i>→</i><b>4</b><span>Төсөв</span><i>→</i><b>5</b><span>Шалгах</span>
       </div>
+      <a className="boostBudgetJump" href="#boost-budget-section">₮ Төсөв ба зарцуулалтын тохиргоо руу очих</a>
     </div>
     {children}
   </div>
