@@ -1,0 +1,29 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
+import AppShell from '../../components/layout/AppShell'
+import { supabase } from '../../lib/supabase'
+import styles from '../manager.module.css'
+
+export default function SettingsPage(){
+ const [tab,setTab]=useState('PROFILE'),[email,setEmail]=useState(''),[name,setName]=useState(''),[business,setBusiness]=useState(''),[notifyPayment,setNotifyPayment]=useState(true),[notifyMeta,setNotifyMeta]=useState(true),[notifyReport,setNotifyReport]=useState(false),[loading,setLoading]=useState(true),[message,setMessage]=useState(''),[error,setError]=useState('')
+ useEffect(()=>{(async()=>{const {data,error}=await supabase.auth.getUser();if(error)setError(error.message);const u=data.user;if(u){setEmail(u.email||'');setName(String(u.user_metadata?.full_name||''));setBusiness(String(u.user_metadata?.business_name||''))}try{const p=JSON.parse(localStorage.getItem('rainy_preferences')||'{}');if(typeof p.notifyPayment==='boolean')setNotifyPayment(p.notifyPayment);if(typeof p.notifyMeta==='boolean')setNotifyMeta(p.notifyMeta);if(typeof p.notifyReport==='boolean')setNotifyReport(p.notifyReport)}catch{}setLoading(false)})()},[])
+ async function saveProfile(){setMessage('');setError('');const {error}=await supabase.auth.updateUser({data:{full_name:name,business_name:business}});if(error)setError(error.message);else setMessage('Профайл хадгалагдлаа.')}
+ function saveNotifications(){localStorage.setItem('rainy_preferences',JSON.stringify({notifyPayment,notifyMeta,notifyReport}));setMessage('Мэдэгдлийн тохиргоо энэ төхөөрөмж дээр хадгалагдлаа.');setError('')}
+ const tabs=[['PROFILE','Профайл'],['BUSINESS','Бизнес'],['FACEBOOK','Facebook'],['NOTIFY','Мэдэгдэл'],['PRIVACY','Нууцлал'],['BILLING','Төлбөр'],['ADMIN','Админ']]
+ return <AppShell title="Тохиргоо" subtitle="RAINY account, Facebook, мэдэгдэл, нууцлал болон төлбөрийн тохиргоо.">
+  <div className={styles.tabs} style={{marginBottom:14}}>{tabs.map(([v,l])=><button key={v} className={tab===v?styles.tabActive:''} onClick={()=>{setTab(v);setMessage('');setError('')}}>{l}</button>)}</div>
+  {message&&<div className={styles.success}>{message}</div>}{error&&<div className={styles.error}>{error}</div>}
+  {loading?<div className={styles.card}><div className={styles.spinner}/></div>:<div className={styles.grid2} style={{marginTop:14}}><section className={styles.card}>
+   {tab==='PROFILE'&&<div className={styles.grid}><h2>Профайл</h2><label className={styles.field}><span>И-мэйл</span><input value={email} disabled/></label><label className={styles.field}><span>Нэр</span><input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр"/></label><button className={styles.primary} onClick={saveProfile}><Save size={15}/> Хадгалах</button></div>}
+   {tab==='BUSINESS'&&<div className={styles.grid}><h2>Бизнес</h2><label className={styles.field}><span>Бизнесийн нэр</span><input value={business} onChange={e=>setBusiness(e.target.value)} placeholder="RAINY LLC"/></label><p className={styles.muted}>Энэ нэр Supabase user metadata-д хадгалагдаж workspace UI-д ашиглагдана.</p><button className={styles.primary} onClick={saveProfile}><Save size={15}/> Хадгалах</button></div>}
+   {tab==='FACEBOOK'&&<div className={styles.grid}><h2>Facebook / Meta</h2><p className={styles.muted}>OAuth connection, Page, Ad Account, payment readiness болон Payment Failed Guard-ийг тусгай дэлгэцээс удирдана.</p><a className={styles.primary} href="/facebook">Facebook холболт нээх</a><a className={styles.secondary} href="/campaigns">Meta кампанит ажлууд</a></div>}
+   {tab==='NOTIFY'&&<div className={styles.grid}><h2>Мэдэгдэл</h2><Toggle label="Төлбөрийн төлөв" value={notifyPayment} set={setNotifyPayment}/><Toggle label="Meta account / billing issue" value={notifyMeta} set={setNotifyMeta}/><Toggle label="Долоо хоногийн тайлан" value={notifyReport} set={setNotifyReport}/><button className={styles.primary} onClick={saveNotifications}><Save size={15}/> Хадгалах</button><div className={styles.notice}>Одоогийн хувилбарт preference local storage-д хадгалагдана; server-side notification delivery нэмэгдээгүй тул ажиллахгүй notification-г амласангүй.</div></div>}
+   {tab==='PRIVACY'&&<div className={styles.grid}><h2>Нууцлал</h2><a className={styles.secondary} href="/privacy">Нууцлалын бодлого</a><a className={styles.secondary} href="/data-deletion">Мэдээлэл устгах</a><a className={styles.secondary} href="/terms">Үйлчилгээний нөхцөл</a></div>}
+   {tab==='BILLING'&&<div className={styles.grid}><h2>Төлбөр</h2><p className={styles.muted}>RAINY үйлчилгээний шимтгэл болон transaction history.</p><a className={styles.primary} href="/payments">Төлбөрийн төв</a><a className={styles.secondary} href="/transactions">Гүйлгээний түүх</a></div>}
+   {tab==='ADMIN'&&<div className={styles.grid}><h2>Админ</h2><p className={styles.muted}>Owner/Admin эрхтэй хэрэглэгч шимтгэл, fallback ханш, webhook monitoring, audit log, Pre-Launch Check удирдана.</p><a className={styles.primary} href="/admin">Admin Console</a></div>}
+  </section><aside className={styles.card}><h3>RAINY систем</h3><div className={styles.summary} style={{marginTop:12}}><div><span>Account</span><b>{email||'—'}</b></div><div><span>Бизнес</span><b>{business||'Тохируулаагүй'}</b></div><div><span>Meta</span><b><a href="/facebook">Шалгах →</a></b></div><div><span>Production</span><b><a href="/admin">Pre-Launch →</a></b></div></div></aside></div>}
+ </AppShell>
+}
+function Toggle({label,value,set}:{label:string;value:boolean;set:(v:boolean)=>void}){return <label style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,padding:'12px 0',borderBottom:'1px solid #edf1ef',fontSize:12,fontWeight:700}}><span>{label}</span><input type="checkbox" checked={value} onChange={e=>set(e.target.checked)} style={{width:18,height:18}}/></label>}
