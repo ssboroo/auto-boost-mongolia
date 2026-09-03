@@ -1,0 +1,23 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { CreditCard, ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react'
+import AppShell from '../../components/layout/AppShell'
+import { apiFetch } from '../../lib/api'
+import styles from '../manager.module.css'
+
+type Quote={metaBudgetUsd:number;fx:{rate:number;source:string;rateDate:string};adBudgetMnt:number;serviceFeePercent:number;serviceFeeMnt:number;totalDisplayMnt:number}
+type Tx={id:string;receipt_number?:string;meta_budget_usd:number;service_fee_mnt:number;wire_status:string;created_at:string}
+const mnt=(v:number)=>`${Math.round(Number(v||0)).toLocaleString('mn-MN')}₮`
+
+export default function PaymentsPage(){
+ const [usd,setUsd]=useState(20),[quote,setQuote]=useState<Quote|null>(null),[history,setHistory]=useState<Tx[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('')
+ async function load(v=usd){try{const [q,h]=await Promise.all([apiFetch<Quote>(`/billing/quote?usd=${encodeURIComponent(v.toFixed(2))}`),apiFetch<Tx[]>('/billing/history?limit=10')]);setQuote(q);setHistory(h);setError('')}catch(e:any){setError(e?.message||'Төлбөрийн мэдээлэл ачаалж чадсангүй.')}}
+ useEffect(()=>{load()},[]);useEffect(()=>{const t=setTimeout(()=>load(usd),250);return()=>clearTimeout(t)},[usd])
+ async function checkout(){setLoading(true);setError('');setMessage('');try{const r=await apiFetch<{checkoutUrl:string}>('/billing/fee-checkout',{method:'POST',body:JSON.stringify({metaBudgetUsd:usd})});if(!r.checkoutUrl)throw new Error('QPay checkout URL олдсонгүй.');window.location.assign(r.checkoutUrl)}catch(e:any){setError(e?.message||'Төлбөр эхлүүлж чадсангүй.');setLoading(false)}}
+ return <AppShell title="Төлбөр" subtitle="Meta зарын төсөв болон RAINY үйлчилгээний шимтгэлийг тусад нь ойлгомжтой удирдана.">
+  <div className={styles.grid2}><section className={styles.card}><div className={styles.toolbar}><div><h2>Үйлчилгээний шимтгэл</h2><p className={styles.muted}>Meta ad spend нь таны Meta Ad Account payment method-оор Meta-д шууд төлөгдөнө.</p></div><ShieldCheck color="#07824e"/></div><label className={styles.field}><span>Meta зарын төсөв (USD)</span><input type="number" min="1" value={usd} onChange={e=>setUsd(Math.max(1,Number(e.target.value)||1))}/></label>{quote&&<div className={styles.summary} style={{marginTop:14}}><div><span>Meta төсөв</span><b>${quote.metaBudgetUsd.toFixed(2)} · {mnt(quote.adBudgetMnt)}</b></div><div><span>RAINY шимтгэл ({quote.serviceFeePercent}%)</span><b>{mnt(quote.serviceFeeMnt)}</b></div><div><span>Нийт үнэлгээ</span><b>{mnt(quote.totalDisplayMnt)}</b></div><div><span>Ханш</span><b>1 USD = {quote.fx.rate.toLocaleString('mn-MN')}₮ · {quote.fx.rateDate}</b></div></div>}<button className={styles.primary} style={{width:'100%',marginTop:16}} onClick={checkout} disabled={loading||!quote}><CreditCard size={16}/>{loading?'QPay нээж байна…':'QPay-аар RAINY шимтгэл төлөх'}</button>{message&&<div className={styles.success}>{message}</div>}{error&&<div className={styles.error}>{error}</div>}<div className={styles.notice} style={{marginTop:12}}>RAINY картын дугаар/CVV хадгалахгүй. Төлбөрийн provider checkout дээр төлөгдөнө.</div></section>
+  <aside className={styles.card}><h3>Төлбөрийн бүтэц</h3><div className={styles.summary} style={{marginTop:12}}><div><span>Meta ad spend</span><b>Meta Billing</b></div><div><span>RAINY service fee</span><b>QPay checkout</b></div><div><span>Receipt</span><b>/transactions</b></div></div><a className={styles.secondary} style={{width:'100%',marginTop:14}} href="/facebook"><ExternalLink size={15}/> Meta payment readiness шалгах</a></aside></div>
+  <section className={styles.card} style={{marginTop:16}}><div className={styles.toolbar}><h2>Сүүлийн төлбөрүүд</h2><div className={styles.actions}><button className={styles.secondary} onClick={()=>load()}><RefreshCw size={14}/> Шинэчлэх</button><a className={styles.ghost} href="/transactions">Бүх гүйлгээ</a></div></div>{history.length?<div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Огноо</th><th>Receipt</th><th>Meta budget</th><th>Шимтгэл</th><th>Төлөв</th></tr></thead><tbody>{history.map(x=><tr key={x.id}><td>{new Date(x.created_at).toLocaleString('mn-MN')}</td><td>{x.receipt_number||'—'}</td><td>${Number(x.meta_budget_usd).toFixed(2)}</td><td>{mnt(x.service_fee_mnt)}</td><td><span className={`${styles.badge} ${x.wire_status==='succeeded'?styles.good:['failed','canceled'].includes(x.wire_status)?styles.bad:styles.warn}`}>{x.wire_status}</span></td></tr>)}</tbody></table></div>:<div className={styles.empty}>Одоогоор төлбөрийн түүх алга.</div>}</section>
+ </AppShell>
+}
