@@ -9,13 +9,13 @@ import styles from './app-shell.module.css'
 
 const nav = [
   ['/', 'Нүүр', Home],
-  ['/#boost', 'Boost үүсгэх', CirclePlus],
-  ['/#campaigns', 'Кампанит ажил', Layers3],
-  ['/#analytics', 'Аналитик', BarChart3],
+  ['/boost/create', 'Boost үүсгэх', CirclePlus],
+  ['/campaigns', 'Кампанит ажил', Layers3],
+  ['/analytics', 'Аналитик', BarChart3],
   ['/facebook', 'Facebook холбох', Facebook],
-  ['/#payment', 'Төлбөр', CreditCard],
+  ['/payments', 'Төлбөр', CreditCard],
   ['/transactions', 'Гүйлгээ', ReceiptText],
-  ['/admin', 'Тохиргоо', Settings],
+  ['/settings', 'Тохиргоо', Settings],
 ] as const
 
 export default function AppShell({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {
@@ -24,12 +24,12 @@ export default function AppShell({ children, title, subtitle }: { children: Reac
   async function signOut(){ await supabase.auth.signOut(); window.location.assign('/login') }
   return <div className={styles.shell}>
     <aside className={`${styles.sidebar} ${open ? styles.open : ''}`}>
-      <div className={styles.logo}><b>RAINY</b><small>Технологийн Хязгааргүй Боломж</small></div>
+      <a href="/" className={styles.logo}><b>RAINY</b><small>Технологийн Хязгааргүй Боломж</small></a>
       <nav className={styles.nav}>{nav.map(([href,label,Icon]) => {
-        const active = href === '/' ? pathname === '/' : href.startsWith('/#') ? false : pathname.startsWith(href)
+        const active = href === '/' ? pathname === '/' : pathname.startsWith(href.split('/').slice(0,2).join('/') || href)
         return <a key={label} href={href} className={active ? styles.active : ''} onClick={()=>setOpen(false)}><Icon size={18}/><span>{label}</span></a>
       })}</nav>
-      <div className={styles.upgrade}><div className={styles.crown}>♛</div><b>Илүү их боломж</b><p>AI-powered ads<br/>бизнесийн өсөлтөд</p><a href="/#payment">Upgrade</a></div>
+      <div className={styles.upgrade}><div className={styles.crown}>♛</div><b>Илүү их боломж</b><p>AI-powered ads<br/>бизнесийн өсөлтөд</p><a href="/boost/create">Boost үүсгэх</a></div>
       <div className={styles.copy}>© 2026 RAINY.<br/>Бүх эрх хуулиар хамгаалагдсан.</div>
     </aside>
     {open && <button aria-label="Цэс хаах" className={styles.backdrop} onClick={()=>setOpen(false)}/>} 
