@@ -6,18 +6,18 @@ import AuthGate from '../components/AuthGate'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Auto Boost Mongolia — AI Ads Manager',
-    template: '%s · Auto Boost Mongolia',
+    default: 'RAINY — AI-Powered Facebook Ads',
+    template: '%s · RAINY',
   },
-  description: 'Meta Ads Manager-ийн мэргэжлийн тохиргоо, AI шалгалт, тайланг Монгол хэлээр удирдах платформ.',
-  applicationName: 'Auto Boost Mongolia',
+  description: 'RAINY — Facebook болон Meta зар сурталчилгааг AI ашиглан Монгол хэлээр удирдах платформ.',
+  applicationName: 'RAINY',
   robots: { index: false, follow: false },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#111827',
+  themeColor: '#002319',
   colorScheme: 'light',
 }
 
