@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { MetaModule } from './meta/meta.module'
 import { BillingModule } from './billing/billing.module'
+import { PrelaunchModule } from './prelaunch/prelaunch.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { BillingModule } from './billing/billing.module'
     ]),
     MetaModule,
     BillingModule,
+    PrelaunchModule,
   ],
   controllers: [AppController],
   providers: [
