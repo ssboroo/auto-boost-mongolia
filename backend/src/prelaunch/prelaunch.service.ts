@@ -39,7 +39,8 @@ export class PrelaunchService {
     checks.push(this.check('oauth_redirect', 'OAuth redirect URL', redirect.startsWith('https://') && redirect === expectedRedirect ? 'READY' : 'ERROR', redirect || 'META_REDIRECT_URI байхгүй.', redirect !== expectedRedirect ? `META_REDIRECT_URI-г яг ${expectedRedirect} болгоно.` : undefined))
     checks.push(this.check('frontend_origin', 'Frontend production URL', frontendValid ? 'READY' : 'ERROR', frontend || 'FRONTEND_ORIGIN байхгүй.', frontendValid ? undefined : 'FRONTEND_ORIGIN=https://auto-boost-mongolia.vercel.app гэж тохируулна.'))
 
-    checks.push(this.check('supabase_keys', 'Supabase credentials', supabaseUrl && process.env.SUPABASE_PUBLISHABLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY ? 'READY' : 'ERROR', supabaseUrl ? 'Supabase URL болон backend keys шалгагдлаа.' : 'Supabase config дутуу.', 'SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY шалгах'))
+    const supabaseServerSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    checks.push(this.check('supabase_keys', 'Supabase credentials', supabaseUrl && process.env.SUPABASE_PUBLISHABLE_KEY && supabaseServerSecret ? 'READY' : 'ERROR', supabaseUrl ? 'Supabase URL болон backend keys шалгагдлаа.' : 'Supabase config дутуу.', 'SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY (эсвэл legacy SUPABASE_SERVICE_ROLE_KEY) шалгах'))
 
     if (supabaseUrl && process.env.SUPABASE_PUBLISHABLE_KEY) {
       try {
