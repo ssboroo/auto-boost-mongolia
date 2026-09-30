@@ -21,7 +21,7 @@ type BillingSettings = {
 export class BillingService {
   private readonly supabaseUrl = process.env.SUPABASE_URL || 'https://rnujhqmtusuddxygarto.supabase.co'
   private readonly supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || ''
-  private readonly serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  private readonly serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   private readonly wireBase = 'https://api.wire.mn/v1'
   private readonly wireWebhookIp = process.env.WIRE_WEBHOOK_IP || '65.109.117.186'
   private fxCache = new Map<string, { value: FxQuote; expiresAt: number }>()
@@ -327,7 +327,7 @@ export class BillingService {
   }
 
   private async serviceRest<T = any>(path: string, init: RequestInit = {}): Promise<T> {
-    if (!this.serviceRoleKey) throw new UnauthorizedException('SUPABASE_SERVICE_ROLE_KEY тохируулаагүй байна.')
+    if (!this.serviceRoleKey) throw new UnauthorizedException('SUPABASE_SECRET_KEY (эсвэл legacy SUPABASE_SERVICE_ROLE_KEY) тохируулаагүй байна.')
     return this.supabaseRest<T>(this.serviceRoleKey, this.serviceRoleKey, path, init)
   }
 

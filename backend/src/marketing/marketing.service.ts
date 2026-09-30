@@ -159,7 +159,7 @@ export class MarketingService {
         followers: Number(profile?.followers_count || 0),
         follows: Number(profile?.follows_count || 0),
         mediaCount: Number(profile?.media_count || 0),
-        profilePicture: profile?.profile_picture_urlture_url || null,
+        profilePicture: profile?.profile_picture_url || null,
         recentMedia: mediaRows.map((m: any) => ({
           id: m.id,
           caption: String(m.caption || '').slice(0, 1000),
