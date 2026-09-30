@@ -1,37 +1,25 @@
-import { Facebook, Globe2, Linkedin, Music2 } from 'lucide-react'
+'use client'
+
+import { ArrowUpRight, BarChart3, Globe2, PlayCircle, Sparkles } from 'lucide-react'
+import { useUi } from '../ui/UiProvider'
 import styles from './dashboard.module.css'
 
 export default function DashboardHero({ connected }: { connected: boolean }) {
+  const { text } = useUi()
   return <section className={styles.hero}>
-    <div className={styles.heroCopy}>
-      <span>ONE CAMPAIGN · 8 AD CHANNELS</span>
-      <h1>Рекламаа<br/><em>нэг дор удирд</em></h1>
-      <p>Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn болон Microsoft Ads-ийг Монгол хэлтэй нэг workflow-оор бэлтгэж, төсөв болон үр дүнгээ нэг dashboard-аас харна.</p>
-      <div className={styles.heroActions}>
-        <a href="/campaigns/new">Сурталчилгаа үүсгэх →</a>
-        <a className={styles.secondary} href="/facebook"><Facebook size={16}/>{connected ? 'Meta холбогдсон' : 'Meta холбох'}</a>
-      </div>
+    <div className={styles.copy}>
+      <span className={styles.kicker}><Sparkles size={13}/>{text('МОНГОЛ БИЗНЕСТ ЗОРИУЛАВ', 'BUILT FOR MONGOLIAN BUSINESSES')}</span>
+      <h1>{text('Нэг campaign.', 'One campaign.')}<br/><em>{text('Бүх сувгаар.', 'Every channel.')}</em></h1>
+      <p>{text('Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn, Microsoft Ads-ийг нэг Монгол dashboard-аас бэлтгэж, төсөв болон үр дүнгээ нэг дор удирдана.','Plan Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn and Microsoft Ads from one unified dashboard.')}</p>
+      <div className={styles.actions}><a href="/campaigns/new">{text('Campaign үүсгэх','Create campaign')} <ArrowUpRight size={16}/></a><a className={styles.secondary} href="/connections">{connected?text('Meta холбогдсон','Meta connected'):text('Сувгуудаа холбох','Connect channels')}</a></div>
+      <div className={styles.trust}><span>8 {text('суваг','channels')}</span><span>MNT {text('төсөв','billing')}</span><span>{text('Safe preview','Safe preview')}</span></div>
     </div>
-
-    <div className={styles.visual} aria-label="Multi-channel ads preview">
-      <div className={styles.reach}>
-        <small>CHANNELS</small>
-        <b>8</b>
-        <div><i/><i/><i/><i/><i/></div>
-      </div>
-      <div className={styles.adPreview}>
-        <div><Globe2 size={18}/><small>Multi-channel · Preview</small><b>•••</b></div>
-        <div style={{height:94,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#073c2b,#00a761)',color:'#fff',fontWeight:900,fontSize:20}}>BOOST.MN</div>
-        <strong>Нэг төсөв.<br/>Олон суваг.<br/>Нэг үр дүн.</strong>
-        <footer>Shown-ready architecture <span>MN</span></footer>
-      </div>
-      <div className={styles.benefits}>
-        <span><Facebook size={15}/>Meta</span>
-        <span><Globe2 size={15}/>Google</span>
-        <span><Music2 size={15}/>TikTok · X</span>
-        <span><Linkedin size={15}/>LinkedIn · Microsoft</span>
-      </div>
-      <div className={styles.note}>Монгол бизнесүүдэд зориулсан<br/>нэгдсэн рекламын платформ ↗</div>
+    <div className={styles.visual}>
+      <div className={styles.glow}/>
+      <div className={styles.mainCard}><div className={styles.cardHead}><span className={styles.brandDot}>B</span><div><b>BOOST.MN</b><small>{text('Нэгдсэн campaign','Unified campaign')}</small></div><span className={styles.live}>PREVIEW</span></div><div className={styles.previewBody}><small>{text('ӨНӨӨДРИЙН ТОЙМ','TODAY OVERVIEW')}</small><b>₮300,000</b><div className={styles.miniChart}>{[34,58,45,72,66,89,78].map((v,i)=><i key={i} style={{height:v+'%'}}/>)}</div></div><div className={styles.channels}><span>Meta</span><span>Google</span><span>YouTube</span><span>TikTok</span><span>X</span></div></div>
+      <div className={styles.floatA}><BarChart3 size={17}/><div><small>{text('Хүрэлт','Reach')}</small><b>+38.4%</b></div></div>
+      <div className={styles.floatB}><PlayCircle size={17}/><div><small>{text('Видео үзэлт','Video views')}</small><b>128K</b></div></div>
+      <div className={styles.floatC}><Globe2 size={17}/><div><small>{text('Суваг','Channels')}</small><b>8 / 8</b></div></div>
     </div>
   </section>
 }
