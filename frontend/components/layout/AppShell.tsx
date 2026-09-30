@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Sun,
   X,
 } from 'lucide-react'
@@ -37,6 +38,7 @@ export default function AppShell({ children, title, subtitle }: { children: Reac
     ['/', text('Нүүр', 'Overview'), Home],
     ['/campaigns/new', text('Шинэ сурталчилгаа', 'Create campaign'), CirclePlus],
     ['/campaigns', text('Кампанит ажил', 'Campaigns'), Layers3],
+    ['/ai', text('AI Studio', 'AI Studio'), Sparkles],
     ['/analytics', text('Үр дүн', 'Analytics'), BarChart3],
     ['/connections', text('Холболтууд', 'Connections'), Link2],
     ['/payments', text('Төлбөр', 'Billing'), CreditCard],

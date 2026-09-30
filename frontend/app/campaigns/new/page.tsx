@@ -25,13 +25,35 @@ export default function NewCampaignPage(){
   {id:'sales',title:text('Борлуулалт','Sales'),desc:text('Conversion болон худалдан авалтад чиглүүлэх','Optimize toward conversions and purchases')},
  ]
  const [channels,setChannels]=useState<Channel[]>(['facebook','instagram','google','youtube','tiktok','x'])
+ const [aiPrefilled,setAiPrefilled]=useState(false)
  const [objective,setObjective]=useState<Objective>('traffic'),[budget,setBudget]=useState(300000),[duration,setDuration]=useState(7),[websiteUrl,setWebsiteUrl]=useState(''),[headline,setHeadline]=useState(''),[primaryText,setPrimaryText]=useState(''),[city,setCity]=useState('Улаанбаатар'),[ageMin,setAgeMin]=useState(18),[ageMax,setAgeMax]=useState(55),[interests,setInterests]=useState(''),[quote,setQuote]=useState<Quote|null>(null),[provider,setProvider]=useState<ProviderStatus|null>(null),[preview,setPreview]=useState<Preview|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState('')
  const requestBody=useMemo(()=>({name:headline||'BOOST.MN campaign',channels,objective,totalBudgetMnt:budget,durationDays:duration,websiteUrl:websiteUrl||undefined,headline:headline||undefined,primaryText:primaryText||undefined,callToAction:objective==='messages'?'Send Message':objective==='sales'?'Shop Now':'Learn More',audience:{country:'MN',city:city||undefined,ageMin,ageMax,interests:interests.split(',').map(x=>x.trim()).filter(Boolean)}}),[channels,objective,budget,duration,websiteUrl,headline,primaryText,city,ageMin,ageMax,interests])
  useEffect(()=>{apiFetch<any>('/ads/providers').then(r=>setProvider(r?.providers?.[0]||null)).catch(()=>undefined)},[])
+ useEffect(()=>{
+   try{
+     const seed=JSON.parse(localStorage.getItem('boost_ai_campaign_seed')||'null')
+     if(!seed)return
+     const allowedChannels:Channel[]=['facebook','instagram','google','youtube','tiktok','x','linkedin','microsoft']
+     const nextChannels=(Array.isArray(seed.channels)?seed.channels:[]).filter((v:string)=>allowedChannels.includes(v as Channel)) as Channel[]
+     const allowedObjectives:Objective[]=['messages','traffic','leads','video_views','sales']
+     if(nextChannels.length)setChannels(nextChannels)
+     if(allowedObjectives.includes(seed.objective as Objective))setObjective(seed.objective as Objective)
+     if(seed.websiteUrl)setWebsiteUrl(String(seed.websiteUrl))
+     if(seed.headline)setHeadline(String(seed.headline))
+     if(seed.primaryText)setPrimaryText(String(seed.primaryText))
+     if(seed.city)setCity(String(seed.city))
+     if(Number(seed.ageMin)>=18)setAgeMin(Number(seed.ageMin))
+     if(Number(seed.ageMax)>=18)setAgeMax(Number(seed.ageMax))
+     if(seed.interests)setInterests(String(seed.interests))
+     setAiPrefilled(true)
+     localStorage.removeItem('boost_ai_campaign_seed')
+   }catch{}
+ },[])
  useEffect(()=>{if(!channels.length){setQuote(null);return}const timer=window.setTimeout(()=>{apiFetch<Quote>('/ads/quote',{method:'POST',body:JSON.stringify(requestBody)}).then(r=>{setQuote(r);setError('')}).catch((e:any)=>setError(e?.message||text('Төсөв тооцоолж чадсангүй.','Could not calculate the budget.')))},250);return()=>window.clearTimeout(timer)},[requestBody,channels.length,text])
  function toggleChannel(channel:Channel){setPreview(null);setChannels(current=>current.includes(channel)?current.filter(x=>x!==channel):[...current,channel])}
  async function createPreview(e:FormEvent){e.preventDefault();setLoading(true);setPreview(null);setError('');try{const r=await apiFetch<Preview>('/ads/campaign-preview',{method:'POST',body:JSON.stringify(requestBody)});setPreview(r);localStorage.setItem('boost_last_campaign_preview',JSON.stringify({...r,createdAt:new Date().toISOString()}))}catch(err:any){setError(err?.message||text('Campaign preview үүсгэж чадсангүй.','Could not create campaign preview.'))}finally{setLoading(false)}}
  return <AppShell title={text('Шинэ сурталчилгаа','Create campaign')} subtitle={text('Нэг тохиргоогоор 8 хүртэл рекламын сувагт campaign бэлтгэнэ.','Prepare a campaign for up to 8 advertising channels from one workflow.')}>
+  {aiPrefilled&&<div className={styles.aiNotice}><Sparkles size={15}/><div><b>{text('AI Scanner-ийн үр дүнг орууллаа','AI Scanner results applied')}</b><span>{text('Суваг, зорилго, creative болон audience-аа шалгаад preview үүсгэнэ үү.','Review channels, objective, creative and audience, then create a preview.')}</span></div><a href="/ai?tool=scanner">{text('Scan харах','View scan')}</a></div>}
   <form className={styles.layout} onSubmit={createPreview}><div className={styles.main}>
    <Section n="01" title={text('Суваг сонгох','Choose channels')} desc={text('Олон сувгийг зэрэг сонгож болно.','Select one or multiple channels.')}>
     <div className={styles.channels}>
