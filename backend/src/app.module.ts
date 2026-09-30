@@ -5,6 +5,7 @@ import { AppController } from './app.controller'
 import { AdsModule } from './ads/ads.module'
 import { BillingModule } from './billing/billing.module'
 import { MetaModule } from './meta/meta.module'
+import { MarketingModule } from './marketing/marketing.module'
 import { PrelaunchModule } from './prelaunch/prelaunch.module'
 
 @Module({
@@ -17,6 +18,7 @@ import { PrelaunchModule } from './prelaunch/prelaunch.module'
     ]),
     MetaModule,
     AdsModule,
+    MarketingModule,
     BillingModule,
     PrelaunchModule,
   ],

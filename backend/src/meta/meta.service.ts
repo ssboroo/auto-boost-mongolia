@@ -40,7 +40,7 @@ export class MetaService {
 
   getLoginUrl(state: string) {
     this.requireAppConfig(); if (!state) throw new BadRequestException('OAuth state шаардлагатай.')
-    const scopes = ['ads_read','ads_management','business_management','pages_show_list','pages_read_engagement','pages_read_user_content','pages_manage_ads']
+    const scopes = ['ads_read','ads_management','business_management','pages_show_list','pages_read_engagement','pages_read_user_content','pages_manage_ads','instagram_basic']
     const params = new URLSearchParams({ client_id: this.appId, redirect_uri: this.redirectUri, state, response_type: 'code', scope: scopes.join(',') })
     return { url: `https://www.facebook.com/${this.graphVersion}/dialog/oauth?${params.toString()}` }
   }
@@ -56,10 +56,14 @@ export class MetaService {
 
   getMe(accessToken: string) { return this.get('me', accessToken, { fields: 'id,name,picture' }) }
   getPages(accessToken: string) { return this.get('me/accounts', accessToken, { fields: 'id,name,category,tasks,picture,connected_instagram_account{id,username,profile_pic}', limit: '100' }) }
+  getManagedPages(accessToken: string) { return this.get('me/accounts', accessToken, { fields: 'id,name,category,tasks,picture,access_token,connected_instagram_account{id,username,profile_pic}', limit: '100' }) }
   getAdAccounts(accessToken: string) { return this.get('me/adaccounts', accessToken, { fields: 'id,account_id,name,currency,timezone_name,account_status,business,amount_spent,balance,spend_cap', limit: '100' }) }
+  getPageProfile(pageId: string, accessToken: string) { if (!pageId) throw new BadRequestException('Page ID шаардлагатай.'); return this.get(pageId, accessToken, { fields: 'id,name,about,description,category,website,fan_count,followers_count,link,picture' }) }
   getPagePosts(pageId: string, accessToken: string) { if (!pageId) throw new BadRequestException('Page ID шаардлагатай.'); return this.get(`${pageId}/posts`, accessToken, { fields: 'id,message,created_time,permalink_url,full_picture,attachments{media,type,url}', limit: '50' }) }
   getLeadForms(pageId: string, accessToken: string) { return this.get(`${pageId}/leadgen_forms`, accessToken, { fields: 'id,name,status,created_time,locale', limit: '100' }) }
   getInstagramIdentity(pageId: string, accessToken: string) { return this.get(pageId, accessToken, { fields: 'id,name,connected_instagram_account{id,username,profile_pic}' }) }
+  getInstagramProfile(instagramId: string, accessToken: string) { if (!instagramId) throw new BadRequestException('Instagram ID шаардлагатай.'); return this.get(instagramId, accessToken, { fields: 'id,username,name,biography,website,followers_count,follows_count,media_count,profile_picture_url' }) }
+  getInstagramMedia(instagramId: string, accessToken: string) { if (!instagramId) throw new BadRequestException('Instagram ID шаардлагатай.'); return this.get(`${instagramId}/media`, accessToken, { fields: 'id,caption,media_type,media_url,permalink,timestamp,thumbnail_url', limit: '50' }) }
 
   getCampaigns(adAccountId: string, accessToken: string) { return this.get(`${this.normalizeAdAccount(adAccountId)}/campaigns`, accessToken, { fields: 'id,name,objective,status,effective_status,daily_budget,lifetime_budget,bid_strategy,budget_remaining,created_time,updated_time', limit: '200' }) }
   getAdSets(adAccountId: string, accessToken: string) { return this.get(`${this.normalizeAdAccount(adAccountId)}/adsets`, accessToken, { fields: 'id,name,campaign_id,status,effective_status,daily_budget,lifetime_budget,optimization_goal,billing_event,bid_strategy,bid_amount,targeting,promoted_object,start_time,end_time,created_time,updated_time', limit: '300' }) }
