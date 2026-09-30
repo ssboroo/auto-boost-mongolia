@@ -45,7 +45,7 @@ export class MarketingService {
           ? {
               id: page.connected_instagram_account.id,
               username: page.connected_instagram_account.username,
-              profilePicture: page.connected_instagram_account.profile_pic || null,
+              profilePicture: page.connected_instagram_account.profile_picture_url || null,
             }
           : null,
       })),
@@ -159,7 +159,7 @@ export class MarketingService {
         followers: Number(profile?.followers_count || 0),
         follows: Number(profile?.follows_count || 0),
         mediaCount: Number(profile?.media_count || 0),
-        profilePicture: profile?.profile_picture_url || null,
+        profilePicture: profile?.profile_picture_urlture_url || null,
         recentMedia: mediaRows.map((m: any) => ({
           id: m.id,
           caption: String(m.caption || '').slice(0, 1000),
