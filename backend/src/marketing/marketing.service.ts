@@ -448,7 +448,7 @@ export class MarketingService {
     if (!rows.length || rows.some(row => this.privateIp(row.address))) throw new BadRequestException('Private/internal network руу scan хийх боломжгүй.')
   }
 
-  private privateIp(ip: string) {
+  private privateIp(ip: string): boolean {
     const v = ip.toLowerCase()
     if (v === '::1' || v === '::' || v.startsWith('fe80:') || v.startsWith('fc') || v.startsWith('fd')) return true
     if (v.startsWith('::ffff:')) return this.privateIp(v.slice(7))
@@ -487,9 +487,9 @@ export class MarketingService {
     throw new BadRequestException('Website redirect хэт олон байна.')
   }
 
-  private extractTitle(html: string) { return this.decode(this.match(html, /<title[^>]*>([\s\S]*?)<\/title>/i) || this.meta(html,'property','og:title')) }
-  private extractDescription(html: string) { return this.decode(this.meta(html,'name','description') || this.meta(html,'property','og:description') || '') }
-  private meta(html: string, attr: string, value: string) {
+  private extractTitle(html: string) { return this.decode(this.match(html, /<title[^>]*>([\s\S]*?)<\/title>/i) || this.metaContent(html,'property','og:title')) }
+  private extractDescription(html: string) { return this.decode(this.metaContent(html,'name','description') || this.metaContent(html,'property','og:description') || '') }
+  private metaContent(html: string, attr: string, value: string) {
     const a = new RegExp('<meta[^>]*' + attr + '=["\\\']' + value + '["\\\'][^>]*content=["\\\']([^"\\\']*)["\\\'][^>]*>','i')
     const b = new RegExp('<meta[^>]*content=["\\\']([^"\\\']*)["\\\'][^>]*' + attr + '=["\\\']' + value + '["\\\'][^>]*>','i')
     return this.match(html,a) || this.match(html,b)
