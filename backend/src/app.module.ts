@@ -2,8 +2,9 @@ import { Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AppController } from './app.controller'
-import { MetaModule } from './meta/meta.module'
+import { AdsModule } from './ads/ads.module'
 import { BillingModule } from './billing/billing.module'
+import { MetaModule } from './meta/meta.module'
 import { PrelaunchModule } from './prelaunch/prelaunch.module'
 
 @Module({
@@ -15,6 +16,7 @@ import { PrelaunchModule } from './prelaunch/prelaunch.module'
       },
     ]),
     MetaModule,
+    AdsModule,
     BillingModule,
     PrelaunchModule,
   ],
