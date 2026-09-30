@@ -1,72 +1,160 @@
-# Auto Boost Mongolia
+# BOOST.MN — Mongolia Multi-Channel Ads Automation
 
-**Монгол хэлтэй AI Ads Manager** — Meta Ads Manager-ийн professional workflow, AI quality review, reporting, direct Meta Graph / Marketing API integration.
+Монгол хэрэглэгчдэд зориулсан **white-label advertising SaaS**. Нэг Монгол dashboard-аас олон рекламын сувгийн campaign бэлтгэх, төсөв тооцох, provider API-р дамжуулах, үр дүнг нэгтгэн харуулах архитектуртай.
 
-## Product flow
+## Supported channels
 
-Auto Boost-д нэвтрэх → Workspace → Facebook холбоно → Кампайн → Зарын багц → Зар → AI шалгалт → Баталгаажуулалт → **PAUSED draft** → хэрэглэгч тусдаа зөвшөөрсний дараа ACTIVE.
+Primary provider architecture нь дараах сувгуудыг дэмжихээр бэлтгэгдсэн:
+
+- Facebook Ads
+- Instagram Ads
+- Google Ads
+- YouTube Ads
+- TikTok Ads
+- X / Twitter Ads
+- LinkedIn Ads
+- Microsoft Ads
+
+Shown нь primary multi-channel provider. Direct Meta integration нь одоогийн fallback/legacy integration хэвээр үлдсэн. Цаашид Google/TikTok зэрэг direct provider adapter нэмэхэд frontend workflow өөрчлөгдөхгүй.
+
+## Customer flow
+
+```text
+Монгол хэрэглэгч
+  ↓
+BOOST.MN бүртгэл / workspace
+  ↓
+Рекламын сувгууд сонгоно
+  Facebook · Instagram · Google · YouTube
+  TikTok · X · LinkedIn · Microsoft
+  ↓
+Зорилго сонгоно
+  Messages · Traffic · Leads · Video Views · Sales
+  ↓
+Creative + Audience + MNT Budget
+  ↓
+Campaign Preview
+  ↓
+Local payment / billing guard
+  ↓
+Explicit user confirmation
+  ↓
+Ad Provider
+  ├─ Shown (primary)
+  ├─ Meta Direct (existing fallback)
+  └─ Future direct adapters
+  ↓
+Cross-channel reporting dashboard
+```
+
+## Spend safety
+
+Repository нь provider credentials байхгүй үед **safe preview mode**-оор ажиллана.
+
+Shown live campaign submit хийхийн тулд backend environment дээр:
+
+```env
+SHOWN_API_BASE_URL=https://api.shown.io
+SHOWN_API_KEY=
+SHOWN_CAMPAIGN_CREATE_PATH=
+SHOWN_LIVE_WRITES=false
+```
+
+гэсэн тохиргоо байна.
+
+`SHOWN_LIVE_WRITES=true` болон албан ёсны partner campaign endpoint хоёул тохирсон үед л live write нээгдэнэ. Endpoint-ийг тааж hard-code хийгээгүй.
 
 ## Architecture
 
 ```text
 Browser
   ↓
+Next.js frontend
+  ↓
 Supabase Auth
   ↓
-Frontend — Next.js / Vercel
-  https://auto-boost-mongolia.vercel.app
-  ↓ same-origin /api proxy
-Backend — NestJS / Vercel Function
-  https://auto-boost-api.vercel.app
-  ↓                 ↓
-Supabase tenant DB  Meta Graph / Marketing API
+NestJS API
+  ├─ /ads/*          Multi-channel provider abstraction
+  ├─ /billing/*      MNT pricing / payment
+  ├─ /meta/*         Direct Meta integration
+  └─ /prelaunch/*    Production checks
+       ↓
+Provider layer
+  ├─ Shown
+  └─ Future adapters
+       ↓
+Ad networks
 ```
 
-Production browser requests нь frontend-ийн `/api/*` замаар backend рүү proxy хийгдэнэ. App user session нь Supabase Auth-аар баталгаажна. Meta access token нь browser-д хадгалагдахгүй; тухайн workspace-ийн encrypted token vault-д хадгалагдана.
+## New multi-channel API
 
-## Current functionality
+- `GET /ads/providers`
+  - provider readiness
+  - supported channels
+  - preview/live mode
 
-- 2026 premium responsive SaaS UI
-- Login / signup / password reset / sign out
-- Automatic workspace provisioning per user
-- Row Level Security tenant isolation
-- Campaign → Ad Set → Ad 5-step builder
-- Budget, audience, placement, creative, UTM controls
-- AI quality review + campaign score
-- Explicit spend protection / PAUSED-first flow
-- Direct Meta OAuth — Windsor ашиглахгүй
-- OAuth CSRF state + expiry + app-user validation
-- AES-256-GCM encrypted Meta token vault in Supabase
-- Long-lived Meta token exchange attempt
-- Facebook Page / Post / Ad Account endpoints
-- Campaign, Ad Set, Creative, Ad creation endpoints
-- Insights endpoint
-- Audit logs for sensitive Meta actions
-- Global backend rate limiting
-- Backend health / production readiness checks
-- Same-origin production API proxy
-- Baseline production security headers
+- `POST /ads/quote`
+  - MNT ad budget
+  - service fee
+  - daily budget
+  - average budget per selected channel
 
-## Supabase data model
+- `POST /ads/campaign-preview`
+  - validates objective/channels
+  - prepares provider payload
+  - does **not** spend money
 
-- `profiles`
-- `workspaces`
-- `workspace_members`
-- `meta_connections`
-- `ad_drafts`
-- `audit_logs`
+- `POST /ads/campaigns`
+  - requires `confirm=true`
+  - still blocked when provider live writes are disabled
 
-RLS асаалттай. Security helper/trigger functions нь exposed `public` schema биш `private` schema-д байрлана. Supabase security advisor дээр blocking security warning байхгүй.
+## Frontend
+
+Main routes:
+
+- `/` — 8-channel dashboard
+- `/campaigns/new` — multi-channel campaign wizard
+- `/campaigns` — campaign management
+- `/analytics` — reporting
+- `/facebook` — current direct Meta connection
+- `/payments` — billing
+- `/transactions` — transaction history
+- `/admin` — production readiness
+
+Legacy `/boost` болон `/boost/create` routes нь шинэ `/campaigns/new` wizard руу redirect хийнэ.
 
 ## Local development
+
+Install:
+
+```bash
+npm run install:all
+```
+
+Run frontend + backend:
+
+```bash
+npm run dev
+```
+
+Build:
+
+```bash
+npm run build
+```
+
+Local URLs:
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:4000`
+
+## Environment
 
 Backend:
 
 ```bash
 cd backend
 cp .env.example .env
-npm install
-npm run start:dev
 ```
 
 Frontend:
@@ -74,104 +162,23 @@ Frontend:
 ```bash
 cd frontend
 cp .env.local.example .env.local
-npm install
-npm run dev
 ```
 
-Local URLs:
+Never expose provider secrets, Meta app secret, Supabase service-role key or payment webhook secrets to the frontend.
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:4000`
-- Login: `http://localhost:3000/login`
-- Facebook connection: `http://localhost:3000/facebook`
+## Current production dependencies
 
-## Production Vercel setup
+Codebase нь multi-channel MVP architecture-д шинэчлэгдсэн боловч live public launch хийхийн өмнө дараах external dependencies шаардлагатай:
 
-### Frontend project
+1. Shown partner/API credentials and approved endpoints
+2. Final billing/ad-spend settlement model
+3. Provider account/OAuth flow for every enabled channel
+4. Meta App Review / Business Verification where required
+5. Production Supabase and Vercel secrets
+6. Updated Privacy Policy / Terms for all advertising providers
+7. Cross-channel reporting persistence
+8. Production monitoring and alerting
 
-- Root Directory: `frontend`
-- Framework: Next.js
-- Production domain: `https://auto-boost-mongolia.vercel.app`
-- `NEXT_PUBLIC_API_URL` production-д шаардлагагүй. `frontend/vercel.json` `/api/*`-г backend рүү proxy хийнэ.
+## Product principle
 
-Optional explicit public config:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://rnujhqmtusuddxygarto.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_OXj1FlWu2QkUM9A2XSIR1Q_ZYcSJ3ob
-```
-
-### Backend project
-
-- Root Directory: `backend`
-- Framework: Other
-- Production domain: `https://auto-boost-api.vercel.app`
-
-Required environment variables:
-
-```env
-META_APP_ID=2154953748431672
-META_APP_SECRET=
-META_GRAPH_VERSION=v25.0
-SESSION_SECRET=<long-random-secret>
-SUPABASE_URL=https://rnujhqmtusuddxygarto.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_OXj1FlWu2QkUM9A2XSIR1Q_ZYcSJ3ob
-FRONTEND_ORIGIN=https://auto-boost-mongolia.vercel.app
-META_REDIRECT_URI=https://auto-boost-mongolia.vercel.app/api/meta/auth/callback
-```
-
-`META_APP_SECRET` болон `SESSION_SECRET`-ийг frontend рүү хэзээ ч гаргахгүй.
-
-## Meta Developer App
-
-Valid OAuth Redirect URI:
-
-```text
-https://auto-boost-mongolia.vercel.app/api/meta/auth/callback
-```
-
-Requested permissions currently include ads/page management scopes. Public users ашиглуулахын өмнө шаардлагатай permissions дээр Meta App Review / Business Verification хийсэн байх ёстой.
-
-## Supabase Auth production configuration
-
-Supabase Auth dashboard дээр:
-
-- Site URL: `https://auto-boost-mongolia.vercel.app`
-- Allowed redirect URL-д `https://auto-boost-mongolia.vercel.app/login` нэмнэ.
-
-Email confirmation ашиглаж байгаа бол production email delivery/template-ээ мөн шалгана.
-
-## Core backend endpoints
-
-- `GET /` — API status
-- `GET /health`
-- `GET /meta/status`
-- `GET /meta/session`
-- `GET /meta/auth/url`
-- `GET /meta/auth/callback`
-- `POST /meta/logout`
-- `GET /meta/me`
-- `GET /meta/pages`
-- `GET /meta/ad-accounts`
-- `GET /meta/pages/:pageId/posts`
-- `GET/POST /meta/ad-accounts/:adAccountId/campaigns`
-- `POST /meta/ad-accounts/:adAccountId/adsets`
-- `POST /meta/ad-accounts/:adAccountId/creatives/existing-post`
-- `POST /meta/ad-accounts/:adAccountId/ads`
-- `POST /meta/objects/:objectId/status`
-- `GET /meta/ad-accounts/:adAccountId/insights`
-
-## Spend safety
-
-Campaign, Ad Set, Ad create endpoints нь frontend-ээс `ACTIVE` ирсэн ч backend дээр **PAUSED** төлөвөөр үүсгэнэ. ACTIVE болгох үйлдэл нь тусдаа explicit status action бөгөөд audit log-д бүртгэгдэнэ.
-
-## Remaining launch dependencies
-
-Codebase production-hardened боловч олон нийтэд Meta Ads SaaS болгон бүрэн нээхийн өмнө гаднын дараах зүйлс заавал дууссан байна:
-
-- Meta App Review / шаардлагатай Business Verification
-- Supabase Auth production Site URL / redirect configuration
-- Vercel production secrets verification
-- Privacy Policy / Terms / account deletion policy
-- Хэрэв төлбөртэй бол subscription/billing integration
-- Production observability/error tracking болон alerting
+**One campaign setup, multiple ad channels, one Mongolian dashboard.**

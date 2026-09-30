@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
-export default function BoostPage(){
-  redirect('/boost/create')
+export default function BoostPage() {
+  redirect('/campaigns/new')
 }
