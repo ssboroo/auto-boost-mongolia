@@ -1,63 +1,20 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, Check, LockKeyhole, Mail, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
+import { ArrowRight, Check, Languages, LockKeyhole, Mail, Moon, ShieldCheck, Sparkles, Sun, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useUi } from '../../components/ui/UiProvider'
 import styles from './page.module.css'
 
-export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setLoading(true); setError(''); setMessage('')
-    try {
-      if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error; window.location.assign('/')
-      } else {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } }); if (error) throw error
-        if (data.session) window.location.assign('/'); else setMessage('Бүртгэл үүслээ. Имэйлээр ирсэн баталгаажуулах холбоосоо нээгээд нэвтэрнэ үү.')
-      }
-    } catch (err: any) { setError(err?.message || 'Үйлдэл амжилтгүй боллоо.') } finally { setLoading(false) }
-  }
-
-  async function resetPassword() {
-    setError(''); setMessage('')
-    if (!email) { setError('Нууц үг сэргээх имэйлээ эхлээд оруулна уу.'); return }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` })
-    if (error) setError(error.message); else setMessage('Нууц үг сэргээх холбоос имэйл рүү илгээгдлээ.')
-  }
-
-  return <main className={styles.page}>
-    <section className={styles.showcase}>
-      <div className={styles.brand}><b>RAINY</b><span>Технологийн Хязгааргүй Боломж</span></div>
-      <div className={styles.showcaseCopy}>
-        <span className={styles.kicker}><Sparkles size={14}/> AI-POWERED FACEBOOK ADS</span>
-        <h1>Бизнесээ<br/><em>AI-тай хамт өсгө.</em></h1>
-        <p>Facebook болон Meta зар сурталчилгаагаа Монгол хэлээр, илүү хурдан, ойлгомжтой, аюулгүй удирдана.</p>
-        <div className={styles.benefits}><Benefit text="Meta API-тай шууд холболт"/><Benefit text="PAUSED-first зардлын хамгаалалт"/><Benefit text="Workspace тусгаарлалт + RLS"/><Benefit text="Encrypted Meta token vault"/></div>
-      </div>
-      <div className={styles.security}><ShieldCheck size={17}/><span>Supabase Auth · Row Level Security · AES-256-GCM</span></div>
-    </section>
-    <section className={styles.authPane}><div className={styles.authCard}>
-      <div className={styles.mobileBrand}>RAINY</div>
-      <div className={styles.modeSwitch}><button className={mode==='login'?styles.activeMode:''} onClick={()=>{setMode('login');setError('');setMessage('')}}>Нэвтрэх</button><button className={mode==='signup'?styles.activeMode:''} onClick={()=>{setMode('signup');setError('');setMessage('')}}>Бүртгүүлэх</button></div>
-      <div className={styles.authHead}><span>{mode==='login'?'ТАВТАЙ МОРИЛ':'ШИНЭ БҮРТГЭЛ'}</span><h2>{mode==='login'?'RAINY-д нэвтрэх':'Шинэ аккаунт үүсгэх'}</h2><p>{mode==='login'?'Өөрийн зар сурталчилгаа, төлбөр, Facebook холболтоо удирдана.':'Бүртгүүлмэгц таны үндсэн workspace автоматаар үүснэ.'}</p></div>
-      <form onSubmit={submit} className={styles.form}>
-        {mode==='signup'&&<label><span>Нэр</span><div className={styles.inputWrap}><UserPlus size={17}/><input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр" required/></div></label>}
-        <label><span>И-мэйл</span><div className={styles.inputWrap}><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" required/></div></label>
-        <label><span>Нууц үг</span><div className={styles.inputWrap}><LockKeyhole size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ тэмдэгт" autoComplete={mode==='login'?'current-password':'new-password'} minLength={8} required/></div></label>
-        {error&&<div className={styles.error}>{error}</div>}{message&&<div className={styles.success}>{message}</div>}
-        <button className={styles.submit} disabled={loading}>{loading?'Уншиж байна...':mode==='login'?'Нэвтрэх':'Бүртгэл үүсгэх'}<ArrowRight size={17}/></button>
-      </form>
-      {mode==='login'&&<button className={styles.reset} onClick={resetPassword}>Нууц үгээ мартсан уу?</button>}
-      <div className={styles.terms}>Үргэлжлүүлснээр RAINY-ийн үйлчилгээний нөхцөл болон нууцлалын бодлогыг зөвшөөрсөнд тооцно.</div>
-    </div></section>
-  </main>
+export default function LoginPage(){
+ const {locale,theme,toggleLocale,toggleTheme,text}=useUi()
+ const [mode,setMode]=useState<'login'|'signup'>('login'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[loading,setLoading]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('')
+ async function submit(e:FormEvent){e.preventDefault();setLoading(true);setError('');setMessage('');try{if(mode==='login'){const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;window.location.assign('/')}else{const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)throw error;if(data.session)window.location.assign('/');else setMessage(text('Бүртгэл үүслээ. Имэйл баталгаажуулна уу.','Account created. Please confirm your email.'))}}catch(err:any){setError(err?.message||text('Үйлдэл амжилтгүй.','Action failed.'))}finally{setLoading(false)}}
+ async function resetPassword(){setError('');setMessage('');if(!email){setError(text('Имэйлээ эхлээд оруулна уу.','Enter your email first.'));return}const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/login'});if(error)setError(error.message);else setMessage(text('Сэргээх холбоос имэйл рүү илгээгдлээ.','Password reset link sent.'))}
+ return <main className={styles.page}>
+  <div className={styles.topTools}><button onClick={toggleLocale}><Languages size={16}/>{locale.toUpperCase()}</button><button onClick={toggleTheme}>{theme==='light'?<Moon size={16}/>:<Sun size={16}/>}</button></div>
+  <section className={styles.showcase}><div className={styles.brand}><span>B</span><div><b>BOOST.MN</b><small>MULTI-CHANNEL ADS</small></div></div><div className={styles.showcaseCopy}><span className={styles.kicker}><Sparkles size={14}/>{text('8 СУВАГ · 1 DASHBOARD','8 CHANNELS · 1 DASHBOARD')}</span><h1>{text('Рекламаа','Run ads')}<br/><em>{text('илүү энгийн.','without the complexity.')}</em></h1><p>{text('Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn, Microsoft Ads-ийг нэг цэвэрхэн workflow-оор удирдана.','Manage Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn and Microsoft Ads through one clean workflow.')}</p><div className={styles.benefits}><Benefit text={text('Монгол + English UI','Mongolian + English UI')}/><Benefit text={text('Light + Dark mode','Light + Dark mode')}/><Benefit text={text('MNT төсөв ба төлбөр','MNT budget and billing')}/><Benefit text={text('Preview-first spend safety','Preview-first spend safety')}/></div></div><div className={styles.security}><ShieldCheck size={17}/><span>Supabase Auth · RLS · AES-256-GCM · Preview-safe</span></div></section>
+  <section className={styles.authPane}><div className={styles.authCard}><div className={styles.modeSwitch}><button className={mode==='login'?styles.activeMode:''} onClick={()=>setMode('login')}>{text('Нэвтрэх','Sign in')}</button><button className={mode==='signup'?styles.activeMode:''} onClick={()=>setMode('signup')}>{text('Бүртгүүлэх','Sign up')}</button></div><div className={styles.authHead}><span>{mode==='login'?text('ТАВТАЙ МОРИЛ','WELCOME BACK'):text('ШИНЭ БҮРТГЭЛ','CREATE ACCOUNT')}</span><h2>{mode==='login'?text('BOOST.MN-д нэвтрэх','Sign in to BOOST.MN'):text('Шинэ workspace үүсгэх','Create your workspace')}</h2><p>{mode==='login'?text('Кампанит ажил, сувгууд, төлбөр, тайлангаа удирдана.','Manage campaigns, connections, billing and analytics.'):text('Бүртгүүлмэгц таны үндсэн workspace үүснэ.','Your primary workspace is created automatically.')}</p></div><form onSubmit={submit} className={styles.form}>{mode==='signup'&&<label><span>{text('Нэр','Name')}</span><div className={styles.inputWrap}><UserPlus size={17}/><input value={name} onChange={e=>setName(e.target.value)} placeholder={text('Таны нэр','Your name')} required/></div></label>}<label><span>{text('И-мэйл','Email')}</span><div className={styles.inputWrap}><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" required/></div></label><label><span>{text('Нууц үг','Password')}</span><div className={styles.inputWrap}><LockKeyhole size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" minLength={8} required/></div></label>{error&&<div className={styles.error}>{error}</div>}{message&&<div className={styles.success}>{message}</div>}<button className={styles.submit} disabled={loading}>{loading?text('Уншиж байна…','Please wait…'):mode==='login'?text('Нэвтрэх','Sign in'):text('Бүртгэл үүсгэх','Create account')}<ArrowRight size={17}/></button></form>{mode==='login'&&<button className={styles.reset} onClick={resetPassword}>{text('Нууц үгээ мартсан уу?','Forgot password?')}</button>}<div className={styles.terms}>{text('Үргэлжлүүлснээр үйлчилгээний нөхцөл болон нууцлалын бодлогыг зөвшөөрнө.','By continuing, you agree to the Terms of Service and Privacy Policy.')}</div></div></section>
+ </main>
 }
 function Benefit({text}:{text:string}){return <div><span><Check size={12}/></span><b>{text}</b></div>}
