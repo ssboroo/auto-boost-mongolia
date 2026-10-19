@@ -1,3 +1,11 @@
+> **2026-10-19 шинэчлэлт:** Үндсэн UI нь AdLiftr-ийн Meta, TikTok, Google Ads,
+> Snapchat гэсэн дөрвөн платформд зориулсан төлөвлөгөө бэлтгэх урсгалтай.
+> Нүүр, campaign wizard, connections шинэчлэгдсэн. Ноорог зөвхөн тухайн
+> төхөөрөмжийн browser-д хадгалагдана. Зар нийтлэх, медиа upload, төлбөр,
+> харилцагчийн дансны mapping болон AdLiftr тайлан холбогдоогүй.
+> Operator-only read-only connector: [docs/adliftr.md](docs/adliftr.md).
+> Доорх Shown архитектур нь хуучин preview бүтэц; Shown API олгодоггүй.
+
 # BOOST.MN — Mongolia Multi-Channel Ads Automation
 
 Монгол хэрэглэгчдэд зориулсан **white-label advertising SaaS**. Нэг Монгол dashboard-аас олон рекламын сувгийн campaign бэлтгэх, төсөв тооцох, provider API-р дамжуулах, үр дүнг нэгтгэн харуулах архитектуртай.

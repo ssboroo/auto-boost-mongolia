@@ -1,3 +1,4 @@
+import { AdliftrService } from './adliftr.service'
 import { Module } from '@nestjs/common'
 import { MetaModule } from '../meta/meta.module'
 import { AdsController } from './ads.controller'
@@ -7,6 +8,6 @@ import { ShownProvider } from './shown.provider'
 @Module({
   imports: [MetaModule],
   controllers: [AdsController],
-  providers: [AdsService, ShownProvider],
+  providers: [AdsService, ShownProvider, AdliftrService],
 })
 export class AdsModule {}
