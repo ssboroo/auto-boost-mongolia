@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: 'BOOST.MN — Multi-Channel Ads',
     template: '%s · BOOST.MN',
   },
-  description: 'Facebook, Instagram, Google, YouTube, TikTok, X, LinkedIn болон Microsoft Ads-ийг нэг Монгол dashboard-аас удирдах рекламын автоматжуулалтын платформ.',
+  description: 'Meta, TikTok, Google Ads болон Snapchat сурталчилгааны төлөвлөгөөг Монгол хэлээр бэлтгэх ажлын орчин.',
   applicationName: 'BOOST.MN',
   robots: { index: false, follow: false },
 }
