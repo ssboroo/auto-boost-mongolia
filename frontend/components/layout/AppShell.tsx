@@ -67,12 +67,12 @@ export default function AppShell({ children, title, subtitle }: { children: Reac
       <div className={styles.workspace}>
         <small>{text('АЖЛЫН ОРЧИН', 'WORKSPACE')}</small>
         <b>{text('Миний бизнес', 'My business')}</b>
-        <span><i/> {text('Систем онлайн', 'System online')}</span>
+        <span><i/> {text('Ноорог бэлтгэх горим', 'Planning mode')}</span>
       </div>
 
       <nav className={styles.nav}>
         {nav.map(([href, label, Icon]) => {
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
+          const active = href === '/' ? pathname === '/' : pathname.startsWith(href) && !(href === '/campaigns' && pathname.startsWith('/campaigns/new'))
           return <a key={href} href={href} className={active ? styles.active : ''} onClick={() => setOpen(false)}>
             <Icon size={18}/><span>{label}</span>
           </a>
@@ -80,8 +80,8 @@ export default function AppShell({ children, title, subtitle }: { children: Reac
       </nav>
 
       <div className={styles.providerCard}>
-        <div><span>8</span><small>{text('сурталчилгааны суваг', 'ad channels')}</small></div>
-        <p>Meta · Google · YouTube<br/>TikTok · X · LinkedIn · Microsoft</p>
+        <div><span>4</span><small>{text('сурталчилгааны суваг', 'ad channels')}</small></div>
+        <p>Meta · TikTok<br/>Google Ads · Snapchat</p>
         <a href="/campaigns/new">{text('Шинэ campaign', 'New campaign')} →</a>
       </div>
 
